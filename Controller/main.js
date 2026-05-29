@@ -1,7 +1,7 @@
 const ASSETS_CACHE = {};
 async function getAsset(cat){
   if(!ASSETS_CACHE[cat]){
-    const r = await fetch('/Model/assets-'+cat+'.json');
+    const r = await fetch('../Model/assets-'+cat+'.json');
     const d = await r.json();
     ASSETS_CACHE[cat] = d[cat];
   }
