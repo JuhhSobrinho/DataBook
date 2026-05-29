@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"
-<title>Gerador de Databook — TEAM Industrial Services</title>
+<title>Gerador de Databook â€” TEAM Industrial Services</title>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <link rel="stylesheet" href="./styles/style-global.css">
 </head>
@@ -13,7 +13,9 @@
     <h1>Gerador de Databook</h1>
     <h2>Relatorio Final de Execucao - TEAM Industrial Services</h2>
   </div>
-  <div class="actions">
+    <div class="actions">
+    <button class="btn btn-outline" onclick="carregarRascunho()">Carregar Rascunho</button>
+    <button class="btn btn-outline" onclick="salvarRascunho()">Salvar Rascunho</button>
     <button class="btn btn-outline" onclick="abrirPreview()">Pre-visualizar</button>
     <button class="btn btn-ok" id="btnGerar" onclick="gerarPDF()">Gerar PDF</button>
   </div>
@@ -284,6 +286,8 @@
     <span id="totalPages" style="margin-left:14px;color:var(--muted)">- estimativa: <strong>0</strong> paginas</span>
   </div>
   <div>
+    <button class="btn btn-outline" onclick="carregarRascunho()">Carregar Rascunho</button>
+    <button class="btn btn-outline" onclick="salvarRascunho()">Salvar Rascunho</button>
     <button class="btn btn-outline" onclick="abrirPreview()">Pre-visualizar</button>
     <button class="btn btn-ok" id="btnGerar2" onclick="gerarPDF()">Gerar PDF Final</button>
   </div>
@@ -306,5 +310,7 @@
 </div>
 
 <script src="../Controller/main.js"></script>
+<script src="../Controller/draft.js"></script>
 </body>
 </html>
+
