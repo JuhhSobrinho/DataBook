@@ -221,7 +221,7 @@
         <div class="field"><label># CONTRATO</label><input type="text" id="cgContrato" placeholder="5900.0124756.23.2"></div>
         <div class="field"><label># PO (SS)</label><input type="text" id="cgPO" placeholder="SS-48/2026"></div>
         <div class="field"><label># TEAM</label><input type="text" id="cgTeam" placeholder="8104-23-0048"></div>
-        <div class="field"><label># Certif.</label><input type="text" id="cgCertif" placeholder="2104 2026-4337"></div>
+        <div class="field"><label># Plaqueta</label><input type="text" id="cgPlaqueta" placeholder="3535" oninput="updateCertifPreview()"><small id="cgCertifPreview" style="color:var(--team-blue);font-weight:600;display:block;margin-top:4px"></small></div>
         <div class="field"><label># Serial</label><input type="text" id="cgSerial" placeholder="23004825226"></div>
         <div class="field"><label>PDA / Vencimento</label><input type="text" id="cgPDA" placeholder="25-0206232 - venc. 24/04/2030"></div>
       </div>
@@ -257,6 +257,25 @@
         <div class="field"><label>Espessura PFP (mm)</label><input type="text" id="cgPfpEsp" placeholder="5"></div>
         <div class="field"><label>Comprimento PFP (mm)</label><input type="text" id="cgPfpComp" placeholder="3200"></div>
       </div>
+    <div class="cert-section">
+      <h4>Fotos do Servico</h4>
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Foto Antes da Execucao</label>
+          <div class="upload-zone" id="fotoAntesZone" onclick="document.getElementById('fotoAntesFile').click()">
+            <p id="fotoAntesName">Clique para selecionar (JPG ou PNG)</p>
+            <input type="file" id="fotoAntesFile" accept="image/jpeg,image/png" style="display:none">
+          </div>
+        </div>
+        <div class="field">
+          <label>Foto Apos Execucao</label>
+          <div class="upload-zone" id="fotoDepoisZone" onclick="document.getElementById('fotoDepoisFile').click()">
+            <p id="fotoDepoisName">Clique para selecionar (JPG ou PNG)</p>
+            <input type="file" id="fotoDepoisFile" accept="image/jpeg,image/png" style="display:none">
+          </div>
+        </div>
+      </div>
+    </div>
     </div>
     <div class="cert-section">
       <h4>Assinatura / Responsavel</h4>
@@ -313,4 +332,8 @@
 <script src="../Controller/draft.js"></script>
 </body>
 </html>
+
+
+
+
 

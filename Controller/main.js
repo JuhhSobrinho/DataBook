@@ -7,7 +7,7 @@ async function getAsset(cat){
   }
   return ASSETS_CACHE[cat];
 }
-const STATE = { uploads: {}, uploadNames: {}, logoCliente: null };
+const STATE = { uploads: {}, uploadNames: {}, logoCliente: null, logoClienteType: null, fotoAntes: null, fotoAntesType: null, fotoDepois: null, fotoDepoisType: null };
 
 function b64ToBytes(b64){
   const bin = atob(b64);
@@ -66,6 +66,34 @@ $('logoCliente').addEventListener('change', async ()=>{
   $('logoClienteZone').classList.add('has-file');
   updateStatus();
 });
+
+function setupFoto(inputId, zoneId, nameId, stateKey){
+  const inp = $(inputId);
+  if(!inp) return;
+  inp.addEventListener('change', async ()=>{
+    if(!inp.files[0]) return;
+    STATE[stateKey]         = await fileToBuffer(inp.files[0]);
+    STATE[stateKey+'Type']  = inp.files[0].type;
+    $(nameId).textContent   = '[OK] ' + inp.files[0].name;
+    $(zoneId).classList.add('has-file');
+  });
+}
+setupFoto('fotoAntesFile','fotoAntesZone','fotoAntesName','fotoAntes');
+setupFoto('fotoDepoisFile','fotoDepoisZone','fotoDepoisName','fotoDepois');
+
+function updateCertifPreview(){
+  const el = $('cgCertifPreview');
+  if(!el) return;
+  const data = ($('cgData')||{}).value||'';
+  const plaqueta = (($('cgPlaqueta')||{}).value||'').trim();
+  if(data && plaqueta){
+    const [yy,mm,dd] = data.split('-');
+    el.textContent = '# Certif: '+dd+mm+yy+'-'+plaqueta;
+  } else {
+    el.textContent = data ? '(informe a plaqueta)' : '';
+  }
+}
+['cgData','cgPlaqueta'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('input', updateCertifPreview); });
 
 async function buildTecnicosList(){
   const [tecnicos, idcards] = await Promise.all([getAsset('tecnicos'), getAsset('idcards')]);
@@ -296,8 +324,61 @@ async function montarDatabook(){
     if(card) await anexarPdf(pdf, b64ToBytes(card.pdf));
   }
 
+  desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum);
+
   const bytes = await pdf.save();
   return new Blob([bytes], {type:'application/pdf'});
+}
+
+function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum){
+  const page = pdf.addPage([PAGE_W, PAGE_H]);
+
+  // ---- HEADER (mesmo estilo das outras páginas) ----
+  const lw = 150, lh = Math.round(150 * 0.103);
+  page.drawImage(logoTeamPng, {x: MARGIN, y: PAGE_H - 48, width: lw, height: lh});
+  page.drawLine({start:{x: MARGIN+lw+18, y: PAGE_H-14}, end:{x: MARGIN+lw+18, y: PAGE_H-62}, thickness:1.5, color:TEAM_BLUE});
+  const tx = MARGIN + lw + 30;
+  page.drawText('RELATORIO FINAL DE EXECUCAO', {x:tx, y:PAGE_H-30, size:14, font:fontBold, color:TEAM_GRAY});
+  page.drawText(docNum,                         {x:tx, y:PAGE_H-48, size:10, font:fontBold, color:TEAM_BLUE});
+  page.drawLine({start:{x:MARGIN, y:PAGE_H-66}, end:{x:PAGE_W-MARGIN, y:PAGE_H-66}, thickness:1.8, color:TEAM_BLUE});
+
+  // ---- SEÇÃO DE ENCERRAMENTO (parte inferior da página) ----
+  let y = 345;
+  page.drawText('Atenciosamente,', {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
+  y -= 32;
+  page.drawText('Anderson Andrade',       {x:MARGIN, y, size:13, font:fontBold, color:TEAM_BLUE});
+  y -= 16;
+  page.drawText('Gerente de LCR / OSR',   {x:MARGIN, y, size:10, font:fontReg,  color:TEAM_BLUE});
+  y -= 14;
+  page.drawText('Leak Repair Service Line',{x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
+  y -= 32;
+
+  // Logo TEAM (versão maior na seção de contato)
+  const cLw = 180, cLh = Math.round(180 * 0.103);
+  page.drawImage(logoTeamPng, {x:MARGIN, y, width:cLw, height:cLh});
+  y -= 22;
+
+  // Dados de contato
+  for(const l of [
+    'Avenida Nossa Senhora do Bom Sucesso, 3344 | Alto do Cardoso | Pindamonhangaba-SP | Brazil',
+    '+55 12 3645-9104 direct',
+    'anderson.andrade@TeamInc.com',
+    'www.TeamInc.com',
+  ]){
+    page.drawText(l, {x:MARGIN, y, size:8.5, font:fontReg, color:TEAM_BLUE});
+    y -= 13;
+  }
+
+  // ---- RODAPÉ ----
+  page.drawLine({start:{x:MARGIN, y:35}, end:{x:PAGE_W-MARGIN, y:35}, thickness:0.8, color:TEAM_BLUE});
+  const boldLabel = 'TEAM Industrial Services';
+  page.drawText(boldLabel, {x:MARGIN, y:23, size:7, font:fontBold, color:TEAM_GRAY});
+  const bLw = fontBold.widthOfTextAtSize(boldLabel, 7);
+  page.drawText(' Avenida Nossa Senhora do Bom Sucesso, 3344 - Alto do Cardoso - Pindamonhangaba/SP, Brazil 12420-010', {x:MARGIN+bLw, y:23, size:7, font:fontReg, color:TEAM_GRAY});
+  page.drawText(docNum, {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:23, size:7, font:fontReg, color:TEAM_GRAY});
+  const foot2 = '+55 12 3645-9104 | anderson.andrade@TeamInc.com | ';
+  page.drawText(foot2, {x:MARGIN, y:11, size:7, font:fontReg, color:TEAM_GRAY});
+  page.drawText('www.TeamInc.com', {x:MARGIN+fontReg.widthOfTextAtSize(foot2,7), y:11, size:7, font:fontBold, color:TEAM_GRAY});
 }
 
 async function anexarPdf(targetPdf, source){
@@ -415,115 +496,171 @@ async function desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, num
 
 async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   const docNum = getDocNumero();
+  const footTxt = 'TISI do Brasil Servicos Industriais Ltda  |  (12) 3645-9104';
+
+  function gerarCertif(){
+    const data = $('cgData').value;
+    const plaqueta = (($('cgPlaqueta')||{}).value||'').trim();
+    if(!data) return plaqueta||'-';
+    const [yy,mm,dd] = data.split('-');
+    return dd+mm+yy+(plaqueta?'-'+plaqueta:'');
+  }
+
+  function desenhaHeaderCert(pg, pageLabel){
+    const HY=PAGE_H-75, HH=68, logoColW=115, rightColW=115;
+    const midX=MARGIN+logoColW, rightX=PAGE_W-MARGIN-rightColW, fx=rightX+8;
+    pg.drawRectangle({x:MARGIN, y:HY, width:PAGE_W-2*MARGIN, height:HH, borderColor:BLACK, borderWidth:0.8, color:rgb(1,1,1)});
+    pg.drawLine({start:{x:midX,y:HY}, end:{x:midX,y:HY+HH}, thickness:0.8, color:BLACK});
+    pg.drawLine({start:{x:rightX,y:HY}, end:{x:rightX,y:HY+HH}, thickness:0.8, color:BLACK});
+    const lw=105, lh=Math.round(105*0.103);
+    pg.drawImage(logoTeamPng, {x:MARGIN+(logoColW-lw)/2, y:HY+(HH-lh)/2, width:lw, height:lh});
+    pg.drawText('Suplemento do Sistema de', {x:midX+10, y:HY+44, size:9.5, font:fontBold, color:TEAM_GRAY});
+    pg.drawText('Qualidade Corporativo',    {x:midX+10, y:HY+29, size:9.5, font:fontBold, color:TEAM_GRAY});
+    pg.drawText('FORM 104.6', {x:fx, y:HY+53, size:9, font:fontBold, color:BLACK});
+    pg.drawLine({start:{x:rightX,y:HY+43}, end:{x:PAGE_W-MARGIN,y:HY+43}, thickness:0.4, color:BLACK});
+    pg.drawText('Rev: 0',     {x:fx, y:HY+30, size:9, font:fontReg,  color:BLACK});
+    pg.drawLine({start:{x:rightX,y:HY+20}, end:{x:PAGE_W-MARGIN,y:HY+20}, thickness:0.4, color:BLACK});
+    pg.drawText(pageLabel,   {x:fx, y:HY+7,  size:9, font:fontReg,  color:BLACK});
+    const titleY=HY-28;
+    pg.drawRectangle({x:MARGIN, y:titleY, width:PAGE_W-2*MARGIN, height:25, borderColor:BLACK, borderWidth:0.8, color:rgb(1,1,1)});
+    const t='CERTIFICADO DE CONFORMIDADE';
+    pg.drawText(t, {x:(PAGE_W-fontBold.widthOfTextAtSize(t,13))/2, y:titleY+7, size:13, font:fontBold, color:TEAM_BLUE});
+    return titleY;
+  }
+
+  // ---- PAGINA 1 ----
   const page = pdf.addPage([PAGE_W, PAGE_H]);
-  desenhaCabecalhoRodape(page, fontReg, fontBold, logoTeamPng, docNum);
+  const titleY1 = desenhaHeaderCert(page, 'Page 1 of 2');
+  page.drawText(footTxt, {x:MARGIN, y:22, size:7, font:fontReg, color:TEAM_GRAY});
+  page.drawText(docNum,  {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:22, size:7, font:fontReg, color:TEAM_GRAY});
 
-  page.drawRectangle({x: MARGIN, y: PAGE_H-95, width: PAGE_W - 2*MARGIN, height: 32, color: rgb(0.94,0.96,0.98), borderColor: TEAM_BLUE, borderWidth: 0.6});
-  page.drawText('Suplemento do Sistema de Qualidade Corporativo', {x: MARGIN+10, y: PAGE_H-78, size: 10, font: fontBold, color: TEAM_GRAY});
-  page.drawText('FORM 104.6  -  Rev: 0', {x: PAGE_W - MARGIN - 110, y: PAGE_H-78, size: 9, font: fontReg, color: TEAM_GRAY});
-  page.drawText('CERTIFICADO DE CONFORMIDADE', {x: (PAGE_W - fontBold.widthOfTextAtSize('CERTIFICADO DE CONFORMIDADE', 16))/2, y: PAGE_H - 125, size: 16, font: fontBold, color: TEAM_BLUE});
+  let y = titleY1 - 16;
+  for(const l of [
+    'TISI DO BRASIL SERVICOS INDUSTRIAIS LTDA.',
+    'Av. Nossa Senhora do Bonsucesso, 3344  -  Nossa Senhora Perpetuo Socorro',
+    'CEP 12421-200    Fone: (12) 3645-9104'
+  ]){
+    page.drawText(l, {x:(PAGE_W-fontReg.widthOfTextAtSize(l,8.5))/2, y, size:8.5, font:fontReg, color:BLACK});
+    y-=12;
+  }
+  y-=8;
 
-  page.drawText('TISI DO BRASIL SERVICOS INDUSTRIAIS LTDA.', {x: MARGIN, y: PAGE_H-160, size: 10, font: fontBold, color: BLACK});
-  page.drawText('Av. Nossa Senhora do Bonsucesso, 3344 - Pindamonhangaba/SP - CEP 12421-200', {x: MARGIN, y: PAGE_H-173, size: 8.5, font: fontReg, color: BLACK});
-
-  let y = PAGE_H - 200;
-  function linha(label, value, x){
-    page.drawText(label, {x, y: y+1, size: 8.5, font: fontBold, color: TEAM_GRAY});
-    page.drawText(value || '-', {x: x + fontBold.widthOfTextAtSize(label, 8.5) + 6, y: y+1, size: 9, font: fontReg, color: BLACK});
+  function hLine(yy){ page.drawLine({start:{x:MARGIN,y:yy}, end:{x:PAGE_W-MARGIN,y:yy}, thickness:0.35, color:rgb(0.75,0.75,0.75)}); }
+  function campo(label, value, x, yy){
+    page.drawText(label, {x, y:yy, size:8.5, font:fontBold, color:TEAM_GRAY});
+    page.drawText(String(value||'-'), {x:x+fontBold.widthOfTextAtSize(label,8.5)+5, y:yy, size:9, font:fontReg, color:BLACK});
   }
 
-  linha('Cliente:', $('cgCliente').value || '-', MARGIN);
-  linha('Data:', fmtDate($('cgData').value) || '-', PAGE_W - 200);
-  y -= 16;
-  linha('Endereco:', $('cgEndereco').value || '-', MARGIN);
-  y -= 16;
-  linha('# CONTRATO:', $('cgContrato').value || '-', MARGIN);
-  linha('# PO:', $('cgPO').value || '-', PAGE_W/2);
-  y -= 16;
-  linha('# TEAM:', $('cgTeam').value || '-', MARGIN);
-  linha('# Certif.:', $('cgCertif').value || '-', MARGIN+200);
-  linha('Quant.:', $('cgQuant').value || '1', PAGE_W - 100);
-  y -= 16;
-  linha('# Serial:', $('cgSerial').value || '-', MARGIN);
-  y -= 16;
-  linha('PDA:', $('cgPDA').value || '-', MARGIN);
+  campo('Cliente:', $('cgCliente').value, MARGIN, y);
+  campo('Data:', fmtDate($('cgData').value)||'-', PAGE_W-190, y);
+  y-=14; hLine(y); y-=12;
+  campo('Endereco:', $('cgEndereco').value, MARGIN, y);
+  y-=14; hLine(y); y-=12;
+  campo('#CONTRATO:', $('cgContrato').value, MARGIN, y);
+  campo('# OS Cliente:', $('cgPO').value, MARGIN+260, y);
+  y-=14; hLine(y); y-=12;
+  campo('# TEAM:', $('cgTeam').value, MARGIN, y);
+  y-=14; hLine(y); y-=12;
+  campo('#Certif.:', gerarCertif(), MARGIN, y);
+  campo('#Serial:', $('cgSerial').value, MARGIN+200, y);
+  campo('Quant.:', $('cgQuant').value||'1', PAGE_W-110, y);
+  y-=14; hLine(y); y-=14;
 
-  y -= 28;
-  page.drawText('Descricao do Servico:', {x: MARGIN, y, size: 9, font: fontBold, color: TEAM_GRAY});
-  y -= 14;
-  const desc = $('cgDescricao').value || '';
-  const descLinhas = quebrarTexto(desc, fontReg, 9.5, PAGE_W - 2*MARGIN);
-  for(const l of descLinhas){
-    page.drawText(l, {x: MARGIN, y, size: 9.5, font: fontReg, color: BLACK});
-    y -= 13;
+  page.drawText('Descricao:', {x:MARGIN, y, size:8.5, font:fontBold, color:TEAM_GRAY}); y-=12;
+  for(const l of quebrarTexto($('cgDescricao').value||'', fontReg, 9, PAGE_W-2*MARGIN)){
+    page.drawText(l, {x:MARGIN, y, size:9, font:fontReg, color:BLACK}); y-=12;
   }
+  y-=8; hLine(y); y-=12;
 
-  y -= 12;
-  const garantia = $('cgGarantia').value || '5';
-  const textoFixo = [
-    'Certificamos que o servico/material e/ou pecas fornecidos conforme o pedido de compra estao de acordo',
-    'com os termos e especificacoes nele contidos, sendo ainda, projetados e calculados em atendimento as',
-    'normas regulamentadoras e as condicoes de projeto dos equipamentos, especificado pelo cliente.',
-    '',
-    'Atestamos para devidos fins que o servico de instalacao do projeto acima desenvolvido pela TEAM',
-    'Industrial Services, entre as condicoes de temperatura e pressao de operacao e projeto informados, se',
-    'apresenta eficaz e com garantia contratual dentro do periodo de ' + garantia + ' ANOS a partir da data de instalacao.',
-    'Para futuras revalidacoes e recertificacoes de reparos realizados e necessario que um tecnico da TEAM',
-    'Industrial Services avalie o estado do reparo no local da execucao (in loco) do mesmo.'
-  ];
-  for(const l of textoFixo){
-    page.drawText(l, {x: MARGIN, y, size: 8.5, font: fontReg, color: BLACK});
-    y -= 11;
+  const garantia = $('cgGarantia').value||'5';
+  for(const l of [
+    'Certificamos que o servico/material e/ou pecas fornecidos conforme o pedido de compra estao de acordo com os termos e',
+    'especificacoes nele contidos, sendo ainda, projetados e calculados em atendimento as normas regulamentadoras e as',
+    'condicoes de projeto dos equipamentos, especificado pelo cliente.',
+  ]){ page.drawText(l, {x:MARGIN, y, size:8, font:fontBold, color:BLACK}); y-=10; }
+  y-=4;
+  for(const l of [
+    'Atestamos para devidos fins que o servico de instalacao do projeto acima desenvolvido pela Team Industrial Services,',
+    'entre as condicoes de temperatura e pressao de operacao e projeto informados, se apresenta eficaz e com garantia',
+    'contratual dentro do periodo de '+garantia+' ANOS a partir da data de instalacao. Para futuras revalidacoes e',
+    'recertificacoes de reparos realizados e necessario que um tecnico da Team Industrial Services avalie o estado do reparo',
+    'no local da execucao (In loco) do mesmo.',
+  ]){ page.drawText(l, {x:MARGIN, y, size:8, font:fontReg, color:BLACK}); y-=10; }
+  y-=10; hLine(y); y-=14;
+
+  const labelW=220, tecStartX=(PAGE_W-(labelW+180))/2;
+  for(const [l,v] of [
+    ['TAG EQUIPAMENTO:',          $('cgTag').value||'-'],
+    ['PRESSAO DE PROJETO:',       ($('cgPProj').value||'-')+' BAR'],
+    ['PRESSAO OPERACAO:',         ($('cgPOper').value||'-')+' BAR'],
+    ['TEMPERATURA DE PROJETO:',   ($('cgTProj').value||'-')+'° C'],
+    ['TEMPERATURA DE OPERACAO:',  ($('cgTOper').value||'-')+'° C'],
+    ['NORMAS APLICAVEIS:',        $('cgNormas').value||'-'],
+    ['VIDA UTIL DO REPARO PROJETADO:', $('cgVida').value||'N/A'],
+  ]){
+    page.drawText(l, {x:tecStartX,       y, size:8.5, font:fontBold, color:TEAM_GRAY});
+    page.drawText(v, {x:tecStartX+labelW, y, size:9,   font:fontReg,  color:BLACK});
+    y-=12;
   }
+  y-=8;
 
-  y -= 12;
-  const linhasTec = [
-    ['TAG EQUIPAMENTO:', $('cgTag').value || '-'],
-    ['PRESSAO DE PROJETO:', ($('cgPProj').value || '-') + ' KPA'],
-    ['PRESSAO OPERACAO:', ($('cgPOper').value || '-') + ' KPA'],
-    ['TEMPERATURA DE PROJETO:', ($('cgTProj').value || '-') + ' C'],
-    ['TEMPERATURA DE OPERACAO:', ($('cgTOper').value || '-') + ' C'],
-    ['NORMAS APLICAVEIS:', $('cgNormas').value || '-'],
-    ['VIDA UTIL DO REPARO PROJETADO:', ($('cgVida').value || '-') + ' ANOS']
-  ];
-  for(const [l,v] of linhasTec){
-    page.drawText(l, {x: MARGIN, y, size: 9, font: fontBold, color: TEAM_GRAY});
-    page.drawText(v, {x: MARGIN+220, y, size: 9.5, font: fontReg, color: BLACK});
-    y -= 13;
-  }
+  const abs=(document.querySelector('input[name=cgAbs]:checked')||{}).value||'SIM';
+  const pfp=(document.querySelector('input[name=cgPfp]:checked')||{}).value||'SIM';
+  page.drawText('ENQUADRAMENTO NA CERTIFICADORA ABS:', {x:MARGIN, y, size:8.5, font:fontBold, color:TEAM_GRAY});
+  page.drawText(abs==='SIM'?'( X ) SIM   (   ) NAO':'(   ) SIM   ( X ) NAO', {x:MARGIN+258, y, size:9, font:fontReg, color:BLACK});
+  y-=14;
+  page.drawText('REALIZADO APLICACAO DE PFP:', {x:MARGIN, y, size:8.5, font:fontBold, color:TEAM_GRAY});
+  page.drawText(pfp==='SIM'?'( X ) SIM   (   ) NAO':'(   ) SIM   ( X ) NAO', {x:MARGIN+195, y, size:9, font:fontReg, color:BLACK});
+  if(pfp==='SIM')
+    page.drawText('ESPESSURA '+($('cgPfpEsp').value||'-')+' MM   COMP-'+($('cgPfpComp').value||'-')+'MM', {x:MARGIN+370, y, size:8.5, font:fontReg, color:BLACK});
 
-  y -= 6;
-  const abs = (document.querySelector('input[name=cgAbs]:checked')||{}).value || 'SIM';
-  const pfp = (document.querySelector('input[name=cgPfp]:checked')||{}).value || 'SIM';
-  page.drawText('ENQUADRAMENTO NA CERTIFICADORA ABS:', {x: MARGIN, y, size: 9, font: fontBold, color: TEAM_GRAY});
-  page.drawText(abs === 'SIM' ? '( X ) SIM    (   ) NAO' : '(   ) SIM    ( X ) NAO', {x: MARGIN+250, y, size: 9.5, font: fontReg, color: BLACK});
-  y -= 14;
-  page.drawText('FOI REALIZADO APLICACAO DE PFP:', {x: MARGIN, y, size: 9, font: fontBold, color: TEAM_GRAY});
-  page.drawText(pfp === 'SIM' ? '( X ) SIM    (   ) NAO' : '(   ) SIM    ( X ) NAO', {x: MARGIN+210, y, size: 9.5, font: fontReg, color: BLACK});
-  if(pfp === 'SIM'){
-    page.drawText('Espessura: ' + ($('cgPfpEsp').value||'-') + ' mm    Comprimento: ' + ($('cgPfpComp').value||'-') + ' mm', {x: MARGIN+340, y, size: 9, font: fontReg, color: BLACK});
-  }
+  y-=45;
+  page.drawLine({start:{x:MARGIN,y}, end:{x:MARGIN+280,y}, thickness:0.5, color:BLACK});
+  y-=12; page.drawText('Assinatura :', {x:MARGIN, y, size:9, font:fontBold, color:TEAM_GRAY});
+  y-=14; page.drawText('Cargo: '+($('cgCargo').value||'Gerente de Contrato'), {x:MARGIN, y, size:9, font:fontReg, color:BLACK});
 
-  y -= 50;
-  page.drawLine({start:{x: MARGIN, y}, end:{x: MARGIN+260, y}, thickness: 0.5, color: BLACK});
-  y -= 12;
-  page.drawText('Assinatura', {x: MARGIN, y, size: 9, font: fontBold, color: TEAM_GRAY});
-  y -= 14;
-  page.drawText('Nome: ' + ($('cgGerente').value || ''), {x: MARGIN, y, size: 9, font: fontReg, color: BLACK});
-  y -= 13;
-  page.drawText('Cargo: ' + ($('cgCargo').value || 'Gerente de Contrato'), {x: MARGIN, y, size: 9, font: fontReg, color: BLACK});
-
+  // ---- PAGINA 2 ----
   const page2 = pdf.addPage([PAGE_W, PAGE_H]);
-  desenhaCabecalhoRodape(page2, fontReg, fontBold, logoTeamPng, docNum);
-  page2.drawText('CERTIFICADO DE CONFORMIDADE (cont.)', {x: (PAGE_W - fontBold.widthOfTextAtSize('CERTIFICADO DE CONFORMIDADE (cont.)', 14))/2, y: PAGE_H - 120, size: 14, font: fontBold, color: TEAM_BLUE});
-  page2.drawText('FORM 104.6  -  Rev: 0  -  Page 2 of 2', {x: (PAGE_W - fontReg.widthOfTextAtSize('FORM 104.6  -  Rev: 0  -  Page 2 of 2', 9))/2, y: PAGE_H - 140, size: 9, font: fontReg, color: TEAM_GRAY});
-  page2.drawText('Antes da Execucao', {x: MARGIN+50, y: PAGE_H-180, size: 11, font: fontBold, color: TEAM_GRAY});
-  page2.drawRectangle({x: MARGIN, y: PAGE_H-430, width: 230, height: 240, borderColor: TEAM_BLUE, borderWidth: 0.8, color: rgb(0.97,0.98,0.99)});
-  page2.drawText('Depois da Execucao', {x: PAGE_W-MARGIN-230+50, y: PAGE_H-180, size: 11, font: fontBold, color: TEAM_GRAY});
-  page2.drawRectangle({x: PAGE_W-MARGIN-230, y: PAGE_H-430, width: 230, height: 240, borderColor: TEAM_BLUE, borderWidth: 0.8, color: rgb(0.97,0.98,0.99)});
-  page2.drawLine({start:{x: MARGIN, y: 180}, end:{x: MARGIN+260, y: 180}, thickness: 0.5, color: BLACK});
-  page2.drawText('Assinatura', {x: MARGIN, y: 165, size: 9, font: fontBold, color: TEAM_GRAY});
-  page2.drawText('Cargo: ' + ($('cgCargo').value || 'Gerente de Contrato'), {x: MARGIN, y: 148, size: 9, font: fontReg, color: BLACK});
+  const titleY2 = desenhaHeaderCert(page2, 'Page 2 of 2');
+  page2.drawText(footTxt, {x:MARGIN, y:22, size:7, font:fontReg, color:TEAM_GRAY});
+  page2.drawText(docNum,  {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:22, size:7, font:fontReg, color:TEAM_GRAY});
+
+  const fotoW=230, fotoH=260, fotoY=titleY2-30-fotoH;
+  const fotoAntesX=MARGIN, fotoDepoisX=PAGE_W-MARGIN-fotoW;
+
+  page2.drawText('Antes da Execucao do Servico', {
+    x:fotoAntesX+(fotoW-fontBold.widthOfTextAtSize('Antes da Execucao do Servico',9.5))/2,
+    y:titleY2-18, size:9.5, font:fontBold, color:TEAM_GRAY});
+  page2.drawText('Apos Execucao do Servico', {
+    x:fotoDepoisX+(fotoW-fontBold.widthOfTextAtSize('Apos Execucao do Servico',9.5))/2,
+    y:titleY2-18, size:9.5, font:fontBold, color:TEAM_GRAY});
+
+  async function desenhaFoto(buf, tipo, x){
+    page2.drawRectangle({x, y:fotoY, width:fotoW, height:fotoH, borderColor:BLACK, borderWidth:0.6, color:rgb(1,1,1)});
+    if(!buf) return;
+    try{
+      const img = tipo&&tipo.includes('png')
+        ? await pdf.embedPng(new Uint8Array(buf))
+        : await pdf.embedJpg(new Uint8Array(buf));
+      const d=img.scaleToFit(fotoW-8, fotoH-8);
+      page2.drawImage(img, {x:x+(fotoW-d.width)/2, y:fotoY+(fotoH-d.height)/2, width:d.width, height:d.height});
+    }catch(e){ console.error('foto embed:',e); }
+  }
+  await desenhaFoto(STATE.fotoAntes,  STATE.fotoAntesType,  fotoAntesX);
+  await desenhaFoto(STATE.fotoDepois, STATE.fotoDepoisType, fotoDepoisX);
+
+  const lblBoxY=fotoY-20;
+  function labelBox(x, txt){
+    page2.drawRectangle({x, y:lblBoxY, width:fotoW, height:18, borderColor:BLACK, borderWidth:0.6, color:rgb(1,1,1)});
+    page2.drawText(txt, {x:x+(fotoW-fontBold.widthOfTextAtSize(txt,9))/2, y:lblBoxY+5, size:9, font:fontBold, color:BLACK});
+  }
+  labelBox(fotoAntesX,  'Antes da Execucao do Servico');
+  labelBox(fotoDepoisX, 'Apos Execucao do Servico');
+
+  const sig2Y=lblBoxY-55;
+  page2.drawLine({start:{x:MARGIN,y:sig2Y}, end:{x:MARGIN+280,y:sig2Y}, thickness:0.5, color:BLACK});
+  page2.drawText('Assinatura :', {x:MARGIN, y:sig2Y-12, size:9, font:fontBold, color:TEAM_GRAY});
+  page2.drawText('Cargo: '+($('cgCargo').value||'Gerente de Contrato'), {x:MARGIN, y:sig2Y-26, size:9, font:fontReg, color:BLACK});
 }
 
 function quebrarTexto(txt, font, size, maxW){
