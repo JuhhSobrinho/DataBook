@@ -289,6 +289,13 @@
         <div class="field"><label>Nome do Gerente de Contrato</label><input type="text" id="cgGerente" placeholder="Nome do responsavel"></div>
         <div class="field"><label>Cargo</label><input type="text" id="cgCargo" value="Gerente de Contrato"></div>
       </div>
+      <div class="field" style="margin-top:12px">
+        <label>Imagem da Assinatura <span style="color:var(--muted);font-weight:400">(PNG recomendado — fundo transparente)</span></label>
+        <div class="upload-zone" id="assinaturaZone" onclick="document.getElementById('assinaturaFile').click()" style="max-width:340px">
+          <p id="assinaturaName">Clique para selecionar a imagem da assinatura</p>
+          <input type="file" id="assinaturaFile" accept="image/png,image/jpeg" style="display:none">
+        </div>
+      </div>
     </div>
   </section>
 

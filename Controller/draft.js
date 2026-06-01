@@ -53,6 +53,8 @@ function coletarRascunho(){
     uploadNames,
     logoCliente:     STATE.logoCliente     ? bufToB64(STATE.logoCliente)     : null,
     logoClienteType: STATE.logoClienteType || null,
+    assinatura:      STATE.assinatura      ? bufToB64(STATE.assinatura)      : null,
+    assinaturaType:  STATE.assinaturaType  || null,
     fotoAntes:       STATE.fotoAntes       ? bufToB64(STATE.fotoAntes)       : null,
     fotoAntesType:   STATE.fotoAntesType   || null,
     fotoDepois:      STATE.fotoDepois      ? bufToB64(STATE.fotoDepois)      : null,
@@ -145,6 +147,14 @@ async function restaurarRascunho(estado){
     STATE.logoClienteType=estado.logoClienteType;
     $('logoClienteName').textContent='[OK] logo-cliente';
     $('logoClienteZone').classList.add('has-file');
+  }
+
+  // Assinatura
+  if(estado.assinatura){
+    STATE.assinatura     = b64ToBytes(estado.assinatura).buffer;
+    STATE.assinaturaType = estado.assinaturaType;
+    const n=$('assinaturaName'); if(n) n.textContent='[OK] assinatura';
+    const z=$('assinaturaZone'); if(z) z.classList.add('has-file');
   }
 
   // Fotos

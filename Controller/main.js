@@ -7,7 +7,7 @@ async function getAsset(cat){
   }
   return ASSETS_CACHE[cat];
 }
-const STATE = { uploads: {}, uploadNames: {}, logoCliente: null, logoClienteType: null, fotoAntes: null, fotoAntesType: null, fotoDepois: null, fotoDepoisType: null };
+const STATE = { uploads: {}, uploadNames: {}, logoCliente: null, logoClienteType: null, fotoAntes: null, fotoAntesType: null, fotoDepois: null, fotoDepoisType: null, assinatura: null, assinaturaType: null };
 
 function b64ToBytes(b64){
   const bin = atob(b64);
@@ -80,6 +80,7 @@ function setupFoto(inputId, zoneId, nameId, stateKey){
 }
 setupFoto('fotoAntesFile','fotoAntesZone','fotoAntesName','fotoAntes');
 setupFoto('fotoDepoisFile','fotoDepoisZone','fotoDepoisName','fotoDepois');
+setupFoto('assinaturaFile','assinaturaZone','assinaturaName','assinatura');
 
 function coletarRevisoes(){
   return [...document.querySelectorAll('.revisao-row')].map(row=>({
@@ -651,11 +652,28 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   // ---- PAGINA 1 ----
   const page = pdf.addPage([PAGE_W, PAGE_H]);
   const titleY1 = desenhaHeaderCert(page, 'Page 1 of 2');
+  // Embed assinatura (uma vez, reutilizada nas duas páginas)
+  let _sigImg = null;
+  if(STATE.assinatura){
+    try{
+      _sigImg = STATE.assinaturaType && STATE.assinaturaType.includes('png')
+        ? await pdf.embedPng(new Uint8Array(STATE.assinatura))
+        : await pdf.embedJpg(new Uint8Array(STATE.assinatura));
+    }catch(e){ console.error('assinatura embed:', e); }
+  }
+  function desenhaAssinatura(pg, sigY){
+    if(_sigImg){
+      const d = _sigImg.scaleToFit(220, 48);
+      pg.drawImage(_sigImg, {x:MARGIN, y:sigY+3, width:d.width, height:d.height});
+    }
+    pg.drawLine({start:{x:MARGIN,y:sigY}, end:{x:MARGIN+280,y:sigY}, thickness:0.5, color:BLACK});
+    pg.drawText('Assinatura :', {x:MARGIN, y:sigY-13, size:9, font:fontBold, color:TEAM_GRAY});
+    pg.drawText('Cargo: '+($('cgCargo').value||'Gerente de Contrato'), {x:MARGIN, y:sigY-27, size:9, font:fontReg, color:BLACK});
+  }
+
   // Assinatura fixada acima do rodapé (pág 1)
   const SIG_Y = 78;
-  page.drawLine({start:{x:MARGIN,y:SIG_Y}, end:{x:MARGIN+280,y:SIG_Y}, thickness:0.5, color:BLACK});
-  page.drawText('Assinatura :', {x:MARGIN, y:SIG_Y-13, size:9, font:fontBold, color:TEAM_GRAY});
-  page.drawText('Cargo: '+($('cgCargo').value||'Gerente de Contrato'), {x:MARGIN, y:SIG_Y-27, size:9, font:fontReg, color:BLACK});
+  desenhaAssinatura(page, SIG_Y);
   page.drawLine({start:{x:MARGIN,y:35}, end:{x:PAGE_W-MARGIN,y:35}, thickness:0.5, color:TEAM_BLUE});
   page.drawText(footTxt, {x:MARGIN, y:22, size:7, font:fontReg, color:TEAM_GRAY});
   page.drawText(docNum,  {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:22, size:7, font:fontReg, color:TEAM_GRAY});
@@ -746,9 +764,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   const page2 = pdf.addPage([PAGE_W, PAGE_H]);
   const titleY2 = desenhaHeaderCert(page2, 'Page 2 of 2');
   // Assinatura fixada acima do rodapé (pág 2)
-  page2.drawLine({start:{x:MARGIN,y:SIG_Y}, end:{x:MARGIN+280,y:SIG_Y}, thickness:0.5, color:BLACK});
-  page2.drawText('Assinatura :', {x:MARGIN, y:SIG_Y-13, size:9, font:fontBold, color:TEAM_GRAY});
-  page2.drawText('Cargo: '+($('cgCargo').value||'Gerente de Contrato'), {x:MARGIN, y:SIG_Y-27, size:9, font:fontReg, color:BLACK});
+  desenhaAssinatura(page2, SIG_Y);
   page2.drawLine({start:{x:MARGIN,y:35}, end:{x:PAGE_W-MARGIN,y:35}, thickness:0.5, color:TEAM_BLUE});
   page2.drawText(footTxt, {x:MARGIN, y:22, size:7, font:fontReg, color:TEAM_GRAY});
   page2.drawText(docNum,  {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:22, size:7, font:fontReg, color:TEAM_GRAY});
