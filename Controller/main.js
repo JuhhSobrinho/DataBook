@@ -737,8 +737,8 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   const labelW=220, tecStartX=(PAGE_W-(labelW+180))/2;
   for(const [l,v] of [
     ['TAG EQUIPAMENTO:',          $('cgTag').value||'-'],
-    ['PRESSAO DE PROJETO:',       ($('cgPProj').value||'-')+' BAR'],
-    ['PRESSAO OPERACAO:',         ($('cgPOper').value||'-')+' BAR'],
+    ['PRESSAO DE PROJETO:',       ($('cgPProj').value||'-')],
+    ['PRESSAO OPERACAO:',         ($('cgPOper').value||'-')],
     ['TEMPERATURA DE PROJETO:',   ($('cgTProj').value||'-')+'° C'],
     ['TEMPERATURA DE OPERACAO:',  ($('cgTOper').value||'-')+'° C'],
     ['NORMAS APLICAVEIS:',        $('cgNormas').value||'-'],
