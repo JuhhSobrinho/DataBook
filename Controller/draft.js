@@ -44,6 +44,7 @@ function coletarRascunho(){
       cgAbs: (document.querySelector('input[name=cgAbs]:checked')||{}).value||'SIM',
       cgPfp: (document.querySelector('input[name=cgPfp]:checked')||{}).value||'SIM',
     },
+    revisoes: coletarRevisoes(),
     proc:   document.querySelector('input[name=proc]:checked')?.value||null,
     fichas: [...document.querySelectorAll('input[name=ficha]:checked')].map(el=>el.value),
     pdas:   [...document.querySelectorAll('input[name=pda]:checked')].map(el=>el.value),
@@ -93,6 +94,15 @@ async function restaurarRascunho(estado){
   for(const [name, val] of Object.entries(estado.radios||{})){
     const radio=document.querySelector('input[name='+name+'][value="'+val+'"]');
     if(radio) radio.checked=true;
+  }
+
+  // Revisões
+  if(estado.revisoes?.length){
+    $('revisoesList').innerHTML = '';
+    for(const r of estado.revisoes){
+      const [d,m,y] = (r.data||'').split('/');
+      adicionarRevisao(r.num, r.desc, (d&&m&&y) ? y+'-'+m+'-'+d : '');
+    }
   }
 
   // Proc

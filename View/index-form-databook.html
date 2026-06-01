@@ -79,6 +79,12 @@
       <label>TAG do equipamento / linha reparada</label>
       <input type="text" id="tagEquip" placeholder='Ex.: 2"-P-E9-070'>
     </div>
+    <div class="field" style="margin-top:18px">
+      <label>Tabela de Revisoes</label>
+      <p class="hint" style="margin-top:0">Adicione uma linha por revisao. Rev0 = emissao inicial.</p>
+      <div id="revisoesList" class="revisoes-list"></div>
+      <button type="button" class="btn btn-outline" onclick="adicionarRevisao()" style="margin-top:8px;font-size:12px">+ Adicionar Revisao</button>
+    </div>
   </section>
 
   <section class="step" id="s3">

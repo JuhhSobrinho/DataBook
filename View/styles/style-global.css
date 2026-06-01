@@ -647,3 +647,9 @@ hr.divider {
     border-top: 1px solid var(--border);
     margin: 14px 0
 }
+.revisoes-list { display:flex; flex-direction:column; gap:6px; margin-top:6px }
+.revisao-row { display:flex; gap:8px; align-items:center }
+.revisao-row input { padding:6px 8px; border:1px solid var(--border); border-radius:5px; font-size:13px; color:var(--text); background:var(--card) }
+.revisao-row input:focus { outline:none; border-color:var(--team-blue) }
+.btn-icon-remove { background:none; border:1px solid #e2b4b4; color:#c0392b; border-radius:5px; padding:4px 8px; cursor:pointer; font-size:12px; flex-shrink:0 }
+.btn-icon-remove:hover { background:#fdf0f0 }

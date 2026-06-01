@@ -81,6 +81,27 @@ function setupFoto(inputId, zoneId, nameId, stateKey){
 setupFoto('fotoAntesFile','fotoAntesZone','fotoAntesName','fotoAntes');
 setupFoto('fotoDepoisFile','fotoDepoisZone','fotoDepoisName','fotoDepois');
 
+function coletarRevisoes(){
+  return [...document.querySelectorAll('.revisao-row')].map(row=>({
+    num:  row.querySelector('.rev-num').value.trim(),
+    desc: row.querySelector('.rev-desc').value.trim(),
+    data: fmtDate(row.querySelector('.rev-data').value),
+  })).filter(r=>r.num||r.desc);
+}
+function adicionarRevisao(num, desc, data){
+  const list = $('revisoesList');
+  const idx  = list.querySelectorAll('.revisao-row').length;
+  const row  = document.createElement('div');
+  row.className = 'revisao-row';
+  row.innerHTML =
+    '<input type="text"  class="rev-num"  value="'+(num||'Rev'+idx)+'" placeholder="Rev0" style="width:72px">'+
+    '<input type="text"  class="rev-desc" value="'+(desc||'')+'" placeholder="Descricao da revisao" style="flex:1">'+
+    '<input type="date"  class="rev-data" value="'+(data||'')+'" style="width:138px">'+
+    '<button type="button" class="btn-icon-remove" onclick="this.parentElement.remove()" title="Remover">✕</button>';
+  list.appendChild(row);
+}
+function removerRevisao(btn){ btn.closest('.revisao-row').remove(); }
+
 function updateCertifPreview(){
   const el = $('cgCertifPreview');
   if(!el) return;
@@ -269,7 +290,7 @@ async function montarDatabook(){
   const tag = $('tagEquip').value.trim();
 
   await desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum);
-  await desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, tag);
+  await desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, tag, coletarRevisoes());
   await desenhaIndice(pdf, fontReg, fontBold, logoTeamPng, docNum);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '1', 'SOLICITACAO DE SERVICO');
@@ -452,13 +473,45 @@ async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum){
     {x: 40, y: 30, size: 6.5, font: fontReg, color: TEAM_GRAY});
 }
 
-async function desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, tag){
+async function desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, tag, revisoes){
   const page = pdf.addPage([PAGE_W, PAGE_H]);
   desenhaCabecalhoRodape(page, fontReg, fontBold, logoTeamPng, docNum);
+
   page.drawText(docNum, {x: (PAGE_W - fontBold.widthOfTextAtSize(docNum, 18))/2, y: PAGE_H/2 + 60, size: 18, font: fontBold, color: TEAM_BLUE});
   page.drawLine({start:{x:80,y:PAGE_H/2 + 40}, end:{x:PAGE_W-80,y:PAGE_H/2 + 40}, thickness:1, color: TEAM_BLUE});
   page.drawText('TAG do Equipamento / Linha Reparada', {x: (PAGE_W - fontReg.widthOfTextAtSize('TAG do Equipamento / Linha Reparada', 11))/2, y: PAGE_H/2 + 10, size: 11, font: fontReg, color: TEAM_GRAY});
   page.drawText(tag || '_________________', {x: (PAGE_W - fontBold.widthOfTextAtSize(tag || '_________________', 22))/2, y: PAGE_H/2 - 20, size: 22, font: fontBold, color: BLACK});
+
+  // Tabela de revisões
+  if(revisoes && revisoes.length > 0){
+    const tW = PAGE_W - 2*MARGIN;
+    const cRev=80, cData=110, cDesc=tW-cRev-cData;
+    const tX=MARGIN, rowH=18;
+    let ty = PAGE_H/2 - 60;
+
+    // Header da tabela
+    page.drawRectangle({x:tX, y:ty-rowH, width:tW, height:rowH, color:TEAM_BLUE, borderColor:TEAM_BLUE, borderWidth:0.5});
+    page.drawText('Rev',       {x:tX+6,            y:ty-rowH+5, size:9, font:fontBold, color:rgb(1,1,1)});
+    page.drawText('Descricao', {x:tX+cRev+6,       y:ty-rowH+5, size:9, font:fontBold, color:rgb(1,1,1)});
+    page.drawText('Data',      {x:tX+cRev+cDesc+6, y:ty-rowH+5, size:9, font:fontBold, color:rgb(1,1,1)});
+    ty -= rowH;
+
+    // Linhas
+    for(let i=0; i<revisoes.length; i++){
+      const rev = revisoes[i];
+      const bg = i%2===0 ? rgb(0.96,0.97,0.99) : rgb(1,1,1);
+      page.drawRectangle({x:tX, y:ty-rowH, width:tW, height:rowH, color:bg, borderColor:rgb(0.82,0.87,0.94), borderWidth:0.4});
+      // divisórias verticais
+      page.drawLine({start:{x:tX+cRev,       y:ty}, end:{x:tX+cRev,       y:ty-rowH}, thickness:0.4, color:rgb(0.82,0.87,0.94)});
+      page.drawLine({start:{x:tX+cRev+cDesc, y:ty}, end:{x:tX+cRev+cDesc, y:ty-rowH}, thickness:0.4, color:rgb(0.82,0.87,0.94)});
+      page.drawText(rev.num  ||'-', {x:tX+6,            y:ty-rowH+5, size:8.5, font:fontBold, color:TEAM_BLUE});
+      page.drawText(rev.desc ||'-', {x:tX+cRev+6,       y:ty-rowH+5, size:8.5, font:fontReg,  color:rgb(0.15,0.15,0.15)});
+      page.drawText(rev.data ||'-', {x:tX+cRev+cDesc+6, y:ty-rowH+5, size:8.5, font:fontReg,  color:rgb(0.15,0.15,0.15)});
+      ty -= rowH;
+    }
+    // Borda externa (sem color para não sobrescrever as linhas)
+    page.drawRectangle({x:tX, y:ty, width:tW, height:(revisoes.length+1)*rowH, borderColor:TEAM_BLUE, borderWidth:0.7});
+  }
 }
 
 async function desenhaIndice(pdf, fontReg, fontBold, logoTeamPng, docNum){
@@ -531,6 +584,12 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   // ---- PAGINA 1 ----
   const page = pdf.addPage([PAGE_W, PAGE_H]);
   const titleY1 = desenhaHeaderCert(page, 'Page 1 of 2');
+  // Assinatura fixada acima do rodapé (pág 1)
+  const SIG_Y = 78;
+  page.drawLine({start:{x:MARGIN,y:SIG_Y}, end:{x:MARGIN+280,y:SIG_Y}, thickness:0.5, color:BLACK});
+  page.drawText('Assinatura :', {x:MARGIN, y:SIG_Y-13, size:9, font:fontBold, color:TEAM_GRAY});
+  page.drawText('Cargo: '+($('cgCargo').value||'Gerente de Contrato'), {x:MARGIN, y:SIG_Y-27, size:9, font:fontReg, color:BLACK});
+  page.drawLine({start:{x:MARGIN,y:35}, end:{x:PAGE_W-MARGIN,y:35}, thickness:0.5, color:TEAM_BLUE});
   page.drawText(footTxt, {x:MARGIN, y:22, size:7, font:fontReg, color:TEAM_GRAY});
   page.drawText(docNum,  {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:22, size:7, font:fontReg, color:TEAM_GRAY});
 
@@ -551,18 +610,20 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
     page.drawText(String(value||'-'), {x:x+fontBold.widthOfTextAtSize(label,8.5)+5, y:yy, size:9, font:fontReg, color:BLACK});
   }
 
+  const RX = MARGIN + 265; // coluna direita alinhada: Data | # OS Cliente | #Serial
+
   campo('Cliente:', $('cgCliente').value, MARGIN, y);
-  campo('Data:', fmtDate($('cgData').value)||'-', PAGE_W-190, y);
+  campo('Data:', fmtDate($('cgData').value)||'-', RX, y);
   y-=14; hLine(y); y-=12;
   campo('Endereco:', $('cgEndereco').value, MARGIN, y);
   y-=14; hLine(y); y-=12;
   campo('#CONTRATO:', $('cgContrato').value, MARGIN, y);
-  campo('# OS Cliente:', $('cgPO').value, MARGIN+260, y);
+  campo('# OS Cliente:', $('cgPO').value, RX, y);
   y-=14; hLine(y); y-=12;
   campo('# TEAM:', $('cgTeam').value, MARGIN, y);
   y-=14; hLine(y); y-=12;
   campo('#Certif.:', gerarCertif(), MARGIN, y);
-  campo('#Serial:', $('cgSerial').value, MARGIN+200, y);
+  campo('#Serial:', $('cgSerial').value, RX, y);
   campo('Quant.:', $('cgQuant').value||'1', PAGE_W-110, y);
   y-=14; hLine(y); y-=14;
 
@@ -610,18 +671,18 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   page.drawText(abs==='SIM'?'( X ) SIM   (   ) NAO':'(   ) SIM   ( X ) NAO', {x:MARGIN+258, y, size:9, font:fontReg, color:BLACK});
   y-=14;
   page.drawText('REALIZADO APLICACAO DE PFP:', {x:MARGIN, y, size:8.5, font:fontBold, color:TEAM_GRAY});
-  page.drawText(pfp==='SIM'?'( X ) SIM   (   ) NAO':'(   ) SIM   ( X ) NAO', {x:MARGIN+195, y, size:9, font:fontReg, color:BLACK});
+  page.drawText(pfp==='SIM'?'( X ) SIM   (   ) NAO':'(   ) SIM   ( X ) NAO', {x:MARGIN+258, y, size:9, font:fontReg, color:BLACK});
   if(pfp==='SIM')
     page.drawText('ESPESSURA '+($('cgPfpEsp').value||'-')+' MM   COMP-'+($('cgPfpComp').value||'-')+'MM', {x:MARGIN+370, y, size:8.5, font:fontReg, color:BLACK});
-
-  y-=45;
-  page.drawLine({start:{x:MARGIN,y}, end:{x:MARGIN+280,y}, thickness:0.5, color:BLACK});
-  y-=12; page.drawText('Assinatura :', {x:MARGIN, y, size:9, font:fontBold, color:TEAM_GRAY});
-  y-=14; page.drawText('Cargo: '+($('cgCargo').value||'Gerente de Contrato'), {x:MARGIN, y, size:9, font:fontReg, color:BLACK});
 
   // ---- PAGINA 2 ----
   const page2 = pdf.addPage([PAGE_W, PAGE_H]);
   const titleY2 = desenhaHeaderCert(page2, 'Page 2 of 2');
+  // Assinatura fixada acima do rodapé (pág 2)
+  page2.drawLine({start:{x:MARGIN,y:SIG_Y}, end:{x:MARGIN+280,y:SIG_Y}, thickness:0.5, color:BLACK});
+  page2.drawText('Assinatura :', {x:MARGIN, y:SIG_Y-13, size:9, font:fontBold, color:TEAM_GRAY});
+  page2.drawText('Cargo: '+($('cgCargo').value||'Gerente de Contrato'), {x:MARGIN, y:SIG_Y-27, size:9, font:fontReg, color:BLACK});
+  page2.drawLine({start:{x:MARGIN,y:35}, end:{x:PAGE_W-MARGIN,y:35}, thickness:0.5, color:TEAM_BLUE});
   page2.drawText(footTxt, {x:MARGIN, y:22, size:7, font:fontReg, color:TEAM_GRAY});
   page2.drawText(docNum,  {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:22, size:7, font:fontReg, color:TEAM_GRAY});
 
@@ -656,11 +717,6 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   }
   labelBox(fotoAntesX,  'Antes da Execucao do Servico');
   labelBox(fotoDepoisX, 'Apos Execucao do Servico');
-
-  const sig2Y=lblBoxY-55;
-  page2.drawLine({start:{x:MARGIN,y:sig2Y}, end:{x:MARGIN+280,y:sig2Y}, thickness:0.5, color:BLACK});
-  page2.drawText('Assinatura :', {x:MARGIN, y:sig2Y-12, size:9, font:fontBold, color:TEAM_GRAY});
-  page2.drawText('Cargo: '+($('cgCargo').value||'Gerente de Contrato'), {x:MARGIN, y:sig2Y-26, size:9, font:fontReg, color:BLACK});
 }
 
 function quebrarTexto(txt, font, size, maxW){
@@ -679,3 +735,5 @@ function quebrarTexto(txt, font, size, maxW){
   if(atual) linhas.push(atual);
   return linhas;
 }
+
+adicionarRevisao('Rev0', 'Emissao inicial', '');
