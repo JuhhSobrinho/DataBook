@@ -324,7 +324,19 @@
       <h3>Pre-visualizacao do Databook</h3>
       <button class="close" onclick="fecharPreview()">x</button>
     </div>
-    <div class="modal-body"><iframe id="previewFrame"></iframe></div>
+    <div class="modal-content">
+      <div class="modal-sidebar">
+        <div class="sidebar-section-label">Paginas</div>
+        <p id="pageTotalInfo" class="sidebar-info"></p>
+        <div class="sidebar-row">
+          <button class="btn-tiny" onclick="pageListSelectAll(true)">Todas</button>
+          <button class="btn-tiny" onclick="pageListSelectAll(false)">Nenhuma</button>
+        </div>
+        <div id="pageList" class="page-list"><p class="sidebar-info" style="padding:8px">Abra o preview para listar.</p></div>
+        <button class="btn-remove-pages" id="btnRemovePages" onclick="removerPaginasDesmarcadas()" disabled>Remover desmarcadas</button>
+      </div>
+      <div class="modal-body"><iframe id="previewFrame"></iframe></div>
+    </div>
     <div class="modal-footer">
       <label style="font-weight:600;font-size:13px;color:var(--team-gray)">Nome do Revisor:</label>
       <input type="text" id="revisorNome" placeholder="Digite o nome do revisor que esta aprovando">

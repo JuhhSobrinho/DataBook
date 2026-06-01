@@ -258,16 +258,83 @@ async function gerarPDF(){
 function getDocNumero(){
   return 'TEAM-8104-'+($('doc1').value||'XX')+'-'+($('doc2').value||'XXXX')+'-RFE-REP-'+($('doc3').value||'XXXX')+'-SS-'+($('doc4').value||'XX')+'-'+($('doc5').value||'20XX');
 }
+let _previewBytes = null;
+let _previewUrl   = null;
+
 async function abrirPreview(){
   $('previewModal').classList.add('show');
   $('previewFrame').src = 'about:blank';
+  $('pageList').innerHTML = '<p class="sidebar-info" style="padding:8px">Gerando...</p>';
+  $('pageTotalInfo').textContent = '';
+  $('btnRemovePages').disabled = true;
   try{
     const blob = await montarDatabook();
-    const url = URL.createObjectURL(blob);
-    $('previewFrame').src = url;
-  }catch(e){ alert('Erro: '+e.message) }
+    _previewBytes = await blob.arrayBuffer();
+    _atualizarFrame();
+    await _atualizarListaPaginas();
+  }catch(e){ alert('Erro: '+e.message); }
 }
-function fecharPreview(){ $('previewModal').classList.remove('show') }
+
+function _atualizarFrame(){
+  if(_previewUrl) URL.revokeObjectURL(_previewUrl);
+  _previewUrl = URL.createObjectURL(new Blob([_previewBytes], {type:'application/pdf'}));
+  $('previewFrame').src = _previewUrl;
+}
+
+async function _atualizarListaPaginas(){
+  const doc   = await PDFDocument.load(_previewBytes);
+  const total = doc.getPageCount();
+  const list  = $('pageList');
+  list.innerHTML = '';
+  for(let i = 0; i < total; i++){
+    const item = document.createElement('label');
+    item.className = 'page-item';
+    item.innerHTML = '<input type="checkbox" checked><span>Pág. '+(i+1)+'</span>';
+    const chk = item.querySelector('input');
+    chk.addEventListener('change', ()=>{
+      item.classList.toggle('to-remove', !chk.checked);
+      const anyUnchecked = !!$('pageList').querySelector('input:not(:checked)');
+      $('btnRemovePages').disabled = !anyUnchecked;
+    });
+    list.appendChild(item);
+  }
+  $('pageTotalInfo').textContent = total+' página'+(total!==1?'s':'');
+  $('btnRemovePages').disabled = true;
+}
+
+async function removerPaginasDesmarcadas(){
+  if(!_previewBytes) return;
+  const items = [...$('pageList').querySelectorAll('.page-item')];
+  const keep  = items.map((el,i)=>({i, checked: el.querySelector('input').checked}))
+                     .filter(x=>x.checked).map(x=>x.i);
+  if(keep.length===0){ alert('Selecione ao menos uma página para manter.'); return; }
+
+  const src   = await PDFDocument.load(_previewBytes);
+  const dst   = await PDFDocument.create();
+  const pages = await dst.copyPages(src, keep);
+  pages.forEach(p=>dst.addPage(p));
+
+  _previewBytes = await dst.save();
+  _atualizarFrame();
+  await _atualizarListaPaginas();
+}
+
+function pageListSelectAll(checked){
+  $('pageList').querySelectorAll('input').forEach(c=>{
+    c.checked = checked;
+    c.closest('.page-item').classList.toggle('to-remove', !checked);
+  });
+  $('btnRemovePages').disabled = checked;
+}
+
+function fecharPreview(){
+  $('previewModal').classList.remove('show');
+  if(_previewUrl){ URL.revokeObjectURL(_previewUrl); _previewUrl = null; }
+  _previewBytes = null;
+  $('pageList').innerHTML = '<p class="sidebar-info" style="padding:8px">Abra o preview para listar.</p>';
+  $('pageTotalInfo').textContent = '';
+  $('btnRemovePages').disabled = true;
+}
 function aprovarRevisao(){
   const nome = $('revisorNome').value.trim();
   if(!nome){ alert('Digite o nome do revisor.'); return; }
