@@ -435,11 +435,9 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum){
   let y = 345;
   page.drawText('Atenciosamente,', {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
   y -= 32;
-  page.drawText('Anderson Andrade',       {x:MARGIN, y, size:13, font:fontBold, color:TEAM_BLUE});
+  page.drawText('Carlos Henrique P da Silva', {x:MARGIN, y, size:13, font:fontBold, color:TEAM_BLUE});
   y -= 16;
-  page.drawText('Gerente de LCR / OSR',   {x:MARGIN, y, size:10, font:fontReg,  color:TEAM_BLUE});
-  y -= 14;
-  page.drawText('Leak Repair Service Line',{x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
+  page.drawText('Técnico de Projeto',        {x:MARGIN, y, size:10, font:fontReg,  color:TEAM_BLUE});
   y -= 32;
 
   // Logo TEAM (versão maior na seção de contato)
@@ -451,7 +449,7 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum){
   for(const l of [
     'Avenida Nossa Senhora do Bom Sucesso, 3344 | Alto do Cardoso | Pindamonhangaba-SP | Brazil',
     '+55 12 3645-9104 direct',
-    'anderson.andrade@TeamInc.com',
+    'Carlos.Henrique@teaminc.com',
     'www.TeamInc.com',
   ]){
     page.drawText(l, {x:MARGIN, y, size:8.5, font:fontReg, color:TEAM_BLUE});
@@ -465,7 +463,7 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum){
   const bLw = fontBold.widthOfTextAtSize(boldLabel, 7);
   page.drawText(' Avenida Nossa Senhora do Bom Sucesso, 3344 - Alto do Cardoso - Pindamonhangaba/SP, Brazil 12420-010', {x:MARGIN+bLw, y:23, size:7, font:fontReg, color:TEAM_GRAY});
   page.drawText(docNum, {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:23, size:7, font:fontReg, color:TEAM_GRAY});
-  const foot2 = '+55 12 3645-9104 | anderson.andrade@TeamInc.com | ';
+  const foot2 = '+55 12 3645-9104 | Carlos.Henrique@teaminc.com | ';
   page.drawText(foot2, {x:MARGIN, y:11, size:7, font:fontReg, color:TEAM_GRAY});
   page.drawText('www.TeamInc.com', {x:MARGIN+fontReg.widthOfTextAtSize(foot2,7), y:11, size:7, font:fontBold, color:TEAM_GRAY});
 }
