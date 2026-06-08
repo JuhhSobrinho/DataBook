@@ -1,73 +1,221 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8">
-
-    <title>Redirecting...</title>
+    <title>TEAM Industrial Services</title>
     <style>
-  body.splash {
-    margin: 0;
-    padding: 0;
-    background: linear-gradient(135deg, #001f3f, #005eaa, #0a84d0);
-    color: #fff;
-    font-family: 'Segoe UI', sans-serif;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .splash-intro {
-    text-align: center;
-    animation: fadeIn 1.5s ease-in-out;
-  }
+      body {
+        background: linear-gradient(135deg, #001f3f, #005eaa, #0a84d0);
+        color: #fff;
+        font-family: 'Segoe UI', sans-serif;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-  .line-splash {
-    width: 100px;
-    height: 4px;
-    background-color: #00d9ff;
-    margin: 20px auto;
-    border-radius: 2px;
-    animation: growLine 1s ease-in-out forwards;
-  }
+      /* ── LOGIN ── */
+      #login-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+        animation: fadeIn 0.8s ease;
+      }
 
-  .team {
-    font-size: 3rem;
-    letter-spacing: 8px;
-    font-weight: bold;
-    animation: pulseText 1.2s ease-in-out infinite;
-  }
+      #login-screen .brand {
+        font-size: 2.8rem;
+        font-weight: bold;
+        letter-spacing: 10px;
+      }
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
-  }
+      #login-screen .subtitle {
+        font-size: 0.85rem;
+        letter-spacing: 3px;
+        opacity: 0.7;
+        text-transform: uppercase;
+      }
 
-  @keyframes growLine {
-    from { width: 0; }
-    to { width: 100px; }
-  }
+      .line-dec {
+        width: 100px;
+        height: 3px;
+        background: #00d9ff;
+        border-radius: 2px;
+      }
 
-  @keyframes pulseText {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.7; transform: scale(1.05); }
-  }
-</style>
+      .login-box {
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 12px;
+        padding: 32px 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        width: 320px;
+        backdrop-filter: blur(8px);
+      }
 
+      .login-box label {
+        font-size: 0.8rem;
+        letter-spacing: 2px;
+        opacity: 0.75;
+        text-transform: uppercase;
+      }
+
+      .login-box input {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 6px;
+        border: 1px solid rgba(255,255,255,0.2);
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+        font-size: 1rem;
+        outline: none;
+        transition: border 0.2s;
+      }
+
+      .login-box input:focus {
+        border-color: #00d9ff;
+      }
+
+      .login-box input::placeholder {
+        opacity: 0.4;
+      }
+
+      .btn-enter {
+        width: 100%;
+        padding: 11px;
+        border-radius: 6px;
+        border: none;
+        background: #005eaa;
+        color: #fff;
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: 2px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .btn-enter:hover { background: #0074cc; }
+      .btn-enter:active { background: #004a88; }
+
+      #error-msg {
+        color: #ff6b6b;
+        font-size: 0.8rem;
+        text-align: center;
+        min-height: 18px;
+        letter-spacing: 1px;
+      }
+
+      /* ── SPLASH ── */
+      #splash-screen {
+        display: none;
+        text-align: center;
+        animation: fadeIn 1.2s ease-in-out;
+      }
+
+      .line-splash {
+        width: 100px;
+        height: 4px;
+        background: #00d9ff;
+        margin: 20px auto;
+        border-radius: 2px;
+        animation: growLine 1s ease-in-out forwards;
+      }
+
+      .team-splash {
+        font-size: 3rem;
+        letter-spacing: 8px;
+        font-weight: bold;
+        animation: pulseText 1.2s ease-in-out infinite;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to   { opacity: 1; transform: scale(1); }
+      }
+
+      @keyframes growLine {
+        from { width: 0; }
+        to   { width: 100px; }
+      }
+
+      @keyframes pulseText {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50%      { opacity: 0.7; transform: scale(1.05); }
+      }
+    </style>
   </head>
 
-  <body class="splash">
-    <section class="splash-intro">
+  <body>
+
+    <!-- Tela de login -->
+    <div id="login-screen">
+      <div class="brand">TEAM</div>
+      <div class="line-dec"></div>
+      <div class="subtitle">Industrial Services</div>
+
+      <div class="login-box">
+        <label>Senha de acesso</label>
+        <input type="password" id="pwd-input" placeholder="••••••••" autocomplete="current-password" />
+        <div id="error-msg"></div>
+        <button class="btn-enter" onclick="verificarSenha()">ENTRAR</button>
+      </div>
+    </div>
+
+    <!-- Splash após autenticação -->
+    <div id="splash-screen">
       <div class="line-splash"></div>
-      <h1 class="team">TEAM</h1>
+      <h1 class="team-splash">TEAM</h1>
       <div class="line-splash"></div>
-    </section>
+    </div>
+
     <script>
-    setTimeout(() => {
-      window.location.href = "./View/index-form-databook.html";
-    }, 3000);
-  
-</script>
+      // SHA-256 da senha — para trocar: gere o hash em https://emn178.github.io/online-tools/sha256.html
+      // Senha atual: TEAM@2026
+      const SENHA_HASH = '81b64c46dd98271eb1be8a7e7fd1cc60696858787de091155d13c04d4b617dbb';
+
+      async function sha256(texto) {
+        const enc = new TextEncoder();
+        const buf = await crypto.subtle.digest('SHA-256', enc.encode(texto));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+      }
+
+      async function verificarSenha() {
+        const input = document.getElementById('pwd-input').value;
+        const hash  = await sha256(input);
+
+        if (hash === SENHA_HASH) {
+          sessionStorage.setItem('team_auth', '1');
+          mostrarSplash();
+        } else {
+          const err = document.getElementById('error-msg');
+          err.textContent = 'Senha incorreta.';
+          document.getElementById('pwd-input').value = '';
+          document.getElementById('pwd-input').focus();
+          setTimeout(() => err.textContent = '', 3000);
+        }
+      }
+
+      function mostrarSplash() {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('splash-screen').style.display = 'block';
+        setTimeout(() => {
+          window.location.href = './View/index-form-databook.html';
+        }, 2500);
+      }
+
+      // Enter submete o formulário
+      document.getElementById('pwd-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') verificarSenha();
+      });
+
+      // Se já autenticado na sessão, pula direto para o splash
+      if (sessionStorage.getItem('team_auth') === '1') {
+        mostrarSplash();
+      }
+    </script>
 
   </body>
-
 </html>

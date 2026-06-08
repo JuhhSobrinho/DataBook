@@ -413,16 +413,44 @@ async function montarDatabook(){
     if(card) await anexarPdf(pdf, b64ToBytes(card.pdf));
   }
 
-  desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum);
+  desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, $('capaElab').value.trim());
 
   const bytes = await pdf.save();
   return new Blob([bytes], {type:'application/pdf'});
 }
 
-function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum){
-  const page = pdf.addPage([PAGE_W, PAGE_H]);
+const ELABORADORES = [
+  {
+    chaves:  ['carlos henrique', 'henrique'],
+    nome:    'Carlos Henrique P da Silva',
+    cargo:   'Técnico de Projeto',
+    email:   'Carlos.Henrique@teaminc.com',
+  },
+  {
+    chaves:  ['lais', 'laís'],
+    nome:    'Lais Souza Leite',
+    cargo:   'Analista de Operações',
+    email:   'Lais.Leite@teaminc.com',
+  },
+  {
+    chaves:  ['juliano'],
+    nome:    'Juliano Sobrinho',
+    cargo:   'Jovem Aprendiz',
+    email:   'Juliano.Sobrinho@teaminc.com',
+  },
+];
 
-  // ---- HEADER (mesmo estilo das outras páginas) ----
+function resolverElaborador(elab) {
+  const texto = (elab || '').toLowerCase();
+  return ELABORADORES.find(e => e.chaves.some(c => texto.includes(c)))
+    || { nome: elab || '___________________', cargo: '', email: '' };
+}
+
+function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
+  const autor = resolverElaborador(elab);
+  const page  = pdf.addPage([PAGE_W, PAGE_H]);
+
+  // ---- HEADER ----
   const lw = 150, lh = Math.round(150 * 0.103);
   page.drawImage(logoTeamPng, {x: MARGIN, y: PAGE_H - 48, width: lw, height: lh});
   page.drawLine({start:{x: MARGIN+lw+18, y: PAGE_H-14}, end:{x: MARGIN+lw+18, y: PAGE_H-62}, thickness:1.5, color:TEAM_BLUE});
@@ -431,27 +459,31 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum){
   page.drawText(docNum,                         {x:tx, y:PAGE_H-48, size:10, font:fontBold, color:TEAM_BLUE});
   page.drawLine({start:{x:MARGIN, y:PAGE_H-66}, end:{x:PAGE_W-MARGIN, y:PAGE_H-66}, thickness:1.8, color:TEAM_BLUE});
 
-  // ---- SEÇÃO DE ENCERRAMENTO (parte inferior da página) ----
+  // ---- SEÇÃO DE ENCERRAMENTO ----
   let y = 345;
   page.drawText('Atenciosamente,', {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
   y -= 32;
-  page.drawText('Carlos Henrique P da Silva', {x:MARGIN, y, size:13, font:fontBold, color:TEAM_BLUE});
+  page.drawText(autor.nome,  {x:MARGIN, y, size:13, font:fontBold, color:TEAM_BLUE});
   y -= 16;
-  page.drawText('Técnico de Projeto',        {x:MARGIN, y, size:10, font:fontReg,  color:TEAM_BLUE});
-  y -= 32;
+  if (autor.cargo) {
+    page.drawText(autor.cargo, {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
+    y -= 16;
+  }
+  y -= 16;
 
-  // Logo TEAM (versão maior na seção de contato)
+  // Logo TEAM
   const cLw = 180, cLh = Math.round(180 * 0.103);
   page.drawImage(logoTeamPng, {x:MARGIN, y, width:cLw, height:cLh});
   y -= 22;
 
   // Dados de contato
-  for(const l of [
+  const linhasContato = [
     'Avenida Nossa Senhora do Bom Sucesso, 3344 | Alto do Cardoso | Pindamonhangaba-SP | Brazil',
     '+55 12 3645-9104 direct',
-    'Carlos.Henrique@teaminc.com',
+    ...(autor.email ? [autor.email] : []),
     'www.TeamInc.com',
-  ]){
+  ];
+  for (const l of linhasContato) {
     page.drawText(l, {x:MARGIN, y, size:8.5, font:fontReg, color:TEAM_BLUE});
     y -= 13;
   }
@@ -463,7 +495,8 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum){
   const bLw = fontBold.widthOfTextAtSize(boldLabel, 7);
   page.drawText(' Avenida Nossa Senhora do Bom Sucesso, 3344 - Alto do Cardoso - Pindamonhangaba/SP, Brazil 12420-010', {x:MARGIN+bLw, y:23, size:7, font:fontReg, color:TEAM_GRAY});
   page.drawText(docNum, {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:23, size:7, font:fontReg, color:TEAM_GRAY});
-  const foot2 = '+55 12 3645-9104 | Carlos.Henrique@teaminc.com | ';
+  const emailRodape = autor.email || 'contato@teaminc.com';
+  const foot2 = `+55 12 3645-9104 | ${emailRodape} | `;
   page.drawText(foot2, {x:MARGIN, y:11, size:7, font:fontReg, color:TEAM_GRAY});
   page.drawText('www.TeamInc.com', {x:MARGIN+fontReg.widthOfTextAtSize(foot2,7), y:11, size:7, font:fontBold, color:TEAM_GRAY});
 }

@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>if(sessionStorage.getItem('team_auth')!=='1'){window.location.replace('../index.html');}</script>
 <meta charset="UTF-8"
 <title>Gerador de Databook â€” TEAM Industrial Services</title>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -47,13 +48,13 @@
     <div class="doc-pattern">
       <span class="static">TEAM</span>
       <span class="static">8104</span>
-      <input type="text" id="doc1" maxlength="2" placeholder="XX" value="23">
-      <input type="text" id="doc2" maxlength="4" placeholder="XXXX" value="0048">
+      <input type="text" id="doc1" maxlength="2" placeholder="00" value="">
+      <input type="text" id="doc2" maxlength="4" placeholder="0000" value="">
       <span class="static">RFE-REP</span>
-      <input type="text" id="doc3" maxlength="4" placeholder="XXXX" value="4337">
+      <input type="text" id="doc3" maxlength="4" placeholder="0000" value="">
       <span class="static">SS</span>
-      <input type="text" id="doc4" maxlength="2" placeholder="XX" value="48">
-      <input type="text" id="doc5" maxlength="4" placeholder="20XX" value="2026">
+      <input type="text" id="doc4" maxlength="2" placeholder="00" value="">
+      <input type="text" id="doc5" maxlength="4" placeholder="2000" value="">
     </div>
     <p class="hint" style="margin-top:6px">Preview: <strong id="docPreview" style="color:var(--team-blue);font-family:monospace"></strong></p>
     <div class="grid grid-3" style="margin-top:14px">
@@ -217,7 +218,7 @@
       <div class="grid grid-2">
         <div class="field"><label>Cliente</label><input type="text" id="cgCliente" placeholder="Ex.: PETROBRAS P-62"></div>
         <div class="field"><label>Data</label><input type="date" id="cgData"></div>
-        <div class="field"><label>Endereco</label><input type="text" id="cgEndereco" placeholder="Ex.: Av. Republica do Chile, 65 - Rio de Janeiro/RJ"></div>
+        <div class="field"><label>Endereco</label><input type="text" id="cgEndereco" value="Av. Republica do Chile, 65 - Rio de Janeiro/RJ" placeholder="Ex.: Av. Republica do Chile, 65 - Rio de Janeiro/RJ"></div>
         <div class="field"><label>Quantidade</label><input type="text" id="cgQuant" value="1"></div>
       </div>
     </div>
@@ -355,6 +356,126 @@
 
 <script src="../Controller/main.js"></script>
 <script src="../Controller/draft.js"></script>
+<script>
+(function(){
+  const PROJETOS = [
+    {
+      nome:     'SANTOS 1',
+      team:     '8104-23-0048',
+      contrato: '4600676061',
+      plataformas: ['P-55','P-52','P-54','P-62','P-66','P-67','P-68','P-69','P-70']
+    },
+    {
+      nome:     'SANTOS 2',
+      team:     '8104-24-0049',
+      contrato: '4600679893',
+      plataformas: ['P-71','P-MXL','P-MLZ','PNA-1','PNA-2']
+    },
+    {
+      nome:     'BUZIOS',
+      team:     '8104-24-0104',
+      contrato: '4600681393',
+      plataformas: ['P-74','P-75','P-76','P-77','PCH-1','PCH-2','PGP-1','P-09']
+    },
+    {
+      nome:     'RECAP',
+      team:     '8104-22-0108',
+      contrato: '',
+      plataformas: []
+    },
+    {
+      nome:     'PRIO',
+      team:     '8104-24-0018',
+      contrato: '',
+      plataformas: []
+    }
+  ];
+
+  const POR_PLATAFORMA = {};
+  PROJETOS.forEach(p => p.plataformas.forEach(plat => POR_PLATAFORMA[plat.toUpperCase()] = p));
+
+  // Preenche só se o campo estiver vazio (lookup único: contrato, team)
+  function preencher(campo, valor) {
+    const el = document.getElementById(campo);
+    if (el && !el.value) el.value = valor;
+  }
+
+  // Sempre sincroniza (campos espelho da capa/contracapa)
+  function sincronizar(campo, valor, dispararInput) {
+    const el = document.getElementById(campo);
+    if (!el) return;
+    el.value = valor;
+    if (dispararInput) el.dispatchEvent(new Event('input'));
+  }
+
+  function aplicarProjeto(projeto) {
+    if (!projeto) return;
+    preencher('cgTeam',     projeto.team);
+    preencher('cgContrato', projeto.contrato);
+  }
+
+  // ── Sincronização a partir da CAPA ──────────────────────────────────────
+
+  function sincronizarDaCapa() {
+    const doc1  = (document.getElementById('doc1')?.value  || '').trim(); // ex: "24"
+    const doc2  = (document.getElementById('doc2')?.value  || '').trim(); // ex: "0104"
+    const doc3  = (document.getElementById('doc3')?.value  || '').trim(); // ex: "4926" (plaqueta)
+    const doc4  = (document.getElementById('doc4')?.value  || '').trim(); // ex: "52"
+    const doc5  = (document.getElementById('doc5')?.value  || '').trim(); // ex: "2026"
+    const data  = document.getElementById('capaData')?.value || '';
+
+    // # TEAM: "8104-24-0104"
+    if (doc1 && doc2) {
+      const teamNum = `8104-${doc1}-${doc2}`;
+      sincronizar('cgTeam', teamNum);
+      const projeto = PROJETOS.find(p => p.team === teamNum);
+      sincronizar('cgContrato', projeto ? projeto.contrato : '');
+    }
+
+    // Plaqueta (doc3 = número RFE-REP) — dispara input para updateCertifPreview
+    sincronizar('cgPlaqueta', doc3, true);
+
+    // # PO (SS): "SS-52/2026"
+    if (doc4 && doc5) sincronizar('cgPO', `SS-${doc4}/${doc5}`);
+
+    // Data da capa → data do certificado
+    if (data) sincronizar('cgData', data);
+  }
+
+  ['doc1','doc2','doc3','doc4','doc5'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', sincronizarDaCapa);
+  });
+
+  const capaDataEl = document.getElementById('capaData');
+  if (capaDataEl) capaDataEl.addEventListener('change', sincronizarDaCapa);
+
+  // ── TAG da contracapa → TAG do certificado ──────────────────────────────
+
+  const tagEquipEl = document.getElementById('tagEquip');
+  if (tagEquipEl) tagEquipEl.addEventListener('input', function() {
+    sincronizar('cgTag', this.value);
+  });
+
+  // ── Trigger pelo campo Cliente (plataforma no texto) ────────────────────
+
+  document.getElementById('cgCliente').addEventListener('input', function() {
+    const texto = this.value.toUpperCase();
+    for (const [chave, projeto] of Object.entries(POR_PLATAFORMA)) {
+      const regex = new RegExp('(?<![A-Z0-9])' + chave.replace('-','\\-') + '(?![A-Z0-9])');
+      if (regex.test(texto)) { aplicarProjeto(projeto); return; }
+    }
+  });
+
+  // ── Trigger pelo campo # TEAM digitado manualmente ──────────────────────
+
+  document.getElementById('cgTeam').addEventListener('input', function() {
+    const projeto = PROJETOS.find(p => p.team === this.value.trim());
+    if (projeto) preencher('cgContrato', projeto.contrato);
+  });
+
+})();
+</script>
 </body>
 </html>
 
