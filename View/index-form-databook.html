@@ -14,13 +14,27 @@
     <h1>Gerador de Databook</h1>
     <h2>Relatorio Final de Execucao - TEAM Industrial Services</h2>
   </div>
-    <div class="actions">
-    <button class="btn btn-outline" onclick="carregarRascunho()">Carregar Rascunho</button>
-    <button class="btn btn-outline" onclick="salvarRascunho()">Salvar Rascunho</button>
-    <button class="btn btn-outline" onclick="abrirPreview()">Pre-visualizar</button>
-    <button class="btn btn-ok" id="btnGerar" onclick="gerarPDF()">Gerar PDF</button>
-  </div>
+  <button id="btnInstalarPWA" class="btn btn-outline" style="display:none" onclick="instalarPWA()">⬇ Instalar App</button>
 </header>
+
+<script>
+  let _pwaPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    document.getElementById('btnInstalarPWA').style.display = 'inline-flex';
+  });
+  window.addEventListener('appinstalled', () => {
+    document.getElementById('btnInstalarPWA').style.display = 'none';
+    _pwaPrompt = null;
+  });
+  async function instalarPWA() {
+    if (!_pwaPrompt) return;
+    _pwaPrompt.prompt();
+    const { outcome } = await _pwaPrompt.userChoice;
+    if (outcome === 'accepted') _pwaPrompt = null;
+  }
+</script>
 
 <div class="layout">
 <aside>
@@ -321,7 +335,7 @@
   <div>
     <button class="btn btn-outline" onclick="carregarRascunho()">Carregar Rascunho</button>
     <button class="btn btn-outline" onclick="salvarRascunho()">Salvar Rascunho</button>
-    <button class="btn btn-outline" onclick="abrirPreview()">Pre-visualizar</button>
+<button class="btn btn-outline" onclick="abrirPreview()">Pre-visualizar</button>
     <button class="btn btn-ok" id="btnGerar2" onclick="gerarPDF()">Gerar PDF Final</button>
   </div>
 </div>

@@ -72,6 +72,34 @@ function salvarRascunho(){
   URL.revokeObjectURL(url);
 }
 
+async function compartilharRascunho(){
+  const nome = getDocNumero()+'-rascunho.json';
+  const blob = new Blob([JSON.stringify(coletarRascunho())], {type:'application/json'});
+
+  // Web Share API com suporte a arquivos (mobile e desktop modernos)
+  if (navigator.canShare && navigator.canShare({ files: [new File([blob], nome)] })) {
+    try {
+      await navigator.share({
+        title: 'Rascunho DataBook',
+        text:  nome,
+        files: [new File([blob], nome, {type:'application/json'})],
+      });
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') return; // usuário cancelou — não faz nada
+    }
+  }
+
+  // Fallback: copia para área de transferência
+  try {
+    await navigator.clipboard.writeText(await blob.text());
+    alert('JSON copiado para a área de transferência.');
+  } catch {
+    // Último recurso: download normal
+    salvarRascunho();
+  }
+}
+
 function carregarRascunho(){
   const input    = document.createElement('input');
   input.type     = 'file';

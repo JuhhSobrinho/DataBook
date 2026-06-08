@@ -1,7 +1,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>TEAM Industrial Services</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#005eaa">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -214,6 +218,14 @@
       // Se já autenticado na sessão, pula direto para o splash
       if (sessionStorage.getItem('team_auth') === '1') {
         mostrarSplash();
+      }
+
+      // Registra Service Worker para PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .catch(err => console.warn('SW não registrado:', err));
+        });
       }
     </script>
 
