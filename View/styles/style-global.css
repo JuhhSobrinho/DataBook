@@ -655,14 +655,14 @@ hr.divider {
 .btn-icon-remove:hover { background:#fdf0f0 }
 
 .modal-content { flex:1; display:flex; overflow:hidden; min-height:0 }
-.modal-sidebar { width:160px; flex-shrink:0; border-right:1px solid var(--border); padding:10px 8px; display:flex; flex-direction:column; gap:6px; overflow:hidden; background:var(--bg) }
+.modal-sidebar { width:100px; flex-shrink:0; border-right:1px solid var(--border); padding:10px 8px; display:flex; flex-direction:column; gap:6px; overflow:hidden; background:var(--bg) }
 .sidebar-section-label { font-size:11px; font-weight:700; color:var(--team-blue); text-transform:uppercase; letter-spacing:.5px; padding-bottom:4px; border-bottom:1px solid var(--border) }
 .sidebar-info { font-size:11px; color:var(--muted) }
-.sidebar-row { display:flex; gap:4px }
+.sidebar-row { display:flex; gap:1px; flex-direction:column }
 .btn-tiny { font-size:11px; padding:3px 8px; border:1px solid var(--border); border-radius:4px; background:var(--card); cursor:pointer; color:var(--team-gray); flex:1 }
 .btn-tiny:hover { background:var(--team-blue); color:#fff; border-color:var(--team-blue) }
 .page-list { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:1px }
-.page-item { display:flex; align-items:center; gap:6px; padding:5px 6px; border-radius:5px; font-size:12px; color:var(--text); cursor:pointer; user-select:none }
+.page-item { display:flex; align-items:center; gap:6px; padding:5px 6px; border-radius:5px; font-size:10px; color:var(--text); cursor:pointer; user-select:none }
 .page-item:hover { background:var(--border) }
 .page-item input { cursor:pointer }
 .page-item.to-remove span { text-decoration:line-through; color:var(--muted); opacity:.6 }
