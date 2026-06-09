@@ -235,7 +235,7 @@ const TEAM_GRAY = rgb(0.23, 0.27, 0.32);
 const BLACK = rgb(0,0,0);
 
 async function gerarPDF(){
-  const btn = $('btnGerar');
+  const btn = $('btnGerar2');
   btn.disabled = true;
   const orig = btn.innerHTML;
   btn.innerHTML = '<span class="spinner"></span> Gerando...';
