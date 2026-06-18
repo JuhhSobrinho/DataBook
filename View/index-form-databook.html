@@ -19,6 +19,7 @@
     <h1>Gerador de Databook</h1>
     <h2>Relatorio Final de Execucao - TEAM Industrial Services</h2>
   </div>
+  <button id="btnTema" class="btn btn-outline" onclick="alternarTema()" title="Alternar tema">🌙</button>
   <button id="btnInstalarPWA" class="btn btn-outline" onclick="instalarPWA()">⬇ Instalar App</button>
 </header>
 
@@ -28,6 +29,24 @@
     navigator.serviceWorker.register('../sw.js').catch(() => {});
   }
 
+
+  // Tema escuro
+  (function(){
+    const saved = localStorage.getItem('team_tema');
+    if(saved) document.documentElement.setAttribute('data-theme', saved);
+  })();
+  function alternarTema(){
+    const atual = document.documentElement.getAttribute('data-theme');
+    const novo  = atual === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', novo === 'light' ? '' : 'dark');
+    localStorage.setItem('team_tema', novo === 'light' ? '' : 'dark');
+    document.getElementById('btnTema').textContent = novo === 'dark' ? '☀️' : '🌙';
+  }
+  // Aplica ícone correto ao carregar
+  window.addEventListener('DOMContentLoaded', () => {
+    const t = localStorage.getItem('team_tema');
+    document.getElementById('btnTema').textContent = t === 'dark' ? '☀️' : '🌙';
+  });
   let _pwaPrompt = null;
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
@@ -84,8 +103,14 @@
     <p class="hint" style="margin-top:6px">Preview: <strong id="docPreview" style="color:var(--team-blue);font-family:monospace"></strong></p>
     <div class="grid grid-3" style="margin-top:14px">
       <div class="field"><label>Data</label><input type="date" id="capaData"></div>
-      <div class="field"><label>Elaborado por</label><input type="text" id="capaElab" placeholder="Ex.: Lais Souza Leite"></div>
-      <div class="field"><label>Revisado por</label><input type="text" id="capaRev" placeholder="Preenchido pelo revisor no preview"></div>
+      <div class="field"><label>Elaborado por</label><input type="text" id="capaElab" list="listResponsaveis" autocomplete="off" placeholder="Ex.: Lais Souza Leite"></div>
+      <div class="field"><label>Revisado por</label><input type="text" id="capaRev" placeholder="Preenchido pelo revisor no preview" list="listResponsaveis" autocomplete="off"></div>
+      <datalist id="listResponsaveis">
+        <option value="Henrique Biondi">
+        <option value="Carlos Henrique P da Silva">
+        <option value="Lais Souza Leite">
+        <option value="Juliano Sobrinho">
+      </datalist>
     </div>
     <div class="field" style="margin-top:6px">
       <label>Logo do cliente (JPEG/PNG)</label>
@@ -260,7 +285,7 @@
     </div>
     <div class="cert-section">
       <h4>Descricao do Servico</h4>
-      <div class="field"><textarea id="cgDescricao" placeholder='Ex.: REALIZADO REFORCO ESTRUTURAL COM FIBRA DE CARBONO EM LINHA DE 2" E APLICACAO DE JOTUN JOTACHAR JF750 XT COMP A+B.'></textarea></div>
+      <div class="field"><textarea id="cgDescricao">REALIZADO REFORCO ESTRUTURAL COM FIBRA DE CARBONO EM LINHA DE 2" E APLICACAO DE JOTUN JOTACHAR JF750 XT COMP A+B.</textarea></div>
     </div>
     <div class="cert-section">
       <h4>Dados Tecnicos do Reparo</h4>
@@ -312,8 +337,8 @@
     <div class="cert-section">
       <h4>Assinatura / Responsavel</h4>
       <div class="grid grid-2">
-        <div class="field"><label>Nome do Gerente de Contrato</label><input type="text" id="cgGerente" placeholder="Nome do responsavel"></div>
-        <div class="field"><label>Cargo</label><input type="text" id="cgCargo" value="Gerente de Contrato"></div>
+        <div class="field"><label>Nome do Responsavel</label><input type="text" id="cgGerente" value="Henrique Biondi"></div>
+        <div class="field"><label>Cargo</label><input type="text" id="cgCargo" value="Supervisor Técnico"></div>
       </div>
       <div class="field" style="margin-top:12px">
         <label>Imagem da Assinatura <span style="color:var(--muted);font-weight:400">(PNG recomendado - fundo transparente)</span></label>
@@ -387,19 +412,19 @@
     {
       nome:     'SANTOS 1',
       team:     '8104-23-0048',
-      contrato: '4600676061',
+      contrato: '5900.0124756.23.2',
       plataformas: ['P-55','P-52','P-54','P-62','P-66','P-67','P-68','P-69','P-70']
     },
     {
       nome:     'SANTOS 2',
       team:     '8104-24-0049',
-      contrato: '4600679893',
+      contrato: '5900.0128096.24.2',
       plataformas: ['P-71','P-MXL','P-MLZ','PNA-1','PNA-2']
     },
     {
       nome:     'BUZIOS',
       team:     '8104-24-0104',
-      contrato: '4600681393',
+      contrato: '5900.0128541.24.2',
       plataformas: ['P-74','P-75','P-76','P-77','PCH-1','PCH-2','PGP-1','P-09']
     },
     {
@@ -481,6 +506,11 @@
   if (tagEquipEl) tagEquipEl.addEventListener('input', function() {
     sincronizar('cgTag', this.value);
   });
+
+  // ── Elaborado por → última página (ELABORADORES em main.js) ─────────────
+  // O Responsável/Assinatura do certificado é fixo: Henrique Biondi
+
+  const capaElabEl = document.getElementById('capaElab');
 
   // ── Trigger pelo campo Cliente (plataforma no texto) ────────────────────
 

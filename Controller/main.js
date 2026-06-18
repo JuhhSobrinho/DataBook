@@ -1,4 +1,4 @@
-const ASSETS_CACHE = {};
+﻿const ASSETS_CACHE = {};
 async function getAsset(cat){
   if(!ASSETS_CACHE[cat]){
     const r = await fetch('../Model/assets-'+cat+'.json');
@@ -241,7 +241,18 @@ async function gerarPDF(){
   btn.innerHTML = '<span class="spinner"></span> Gerando...';
   try{
     const blob = await montarDatabook();
-    const url = URL.createObjectURL(blob);
+    let bytes = await blob.arrayBuffer();
+
+    if(_keptPageIndices !== null){
+      // Aplica filtro de páginas removidas no preview, já com o formulário atual (inclui revisor)
+      const src = await PDFDocument.load(bytes);
+      const dst = await PDFDocument.create();
+      const pages = await dst.copyPages(src, _keptPageIndices);
+      pages.forEach(p => dst.addPage(p));
+      bytes = await dst.save();
+    }
+
+    const url = URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
     const a = document.createElement('a');
     a.href = url;
     a.download = getDocNumero() + '.pdf';
@@ -259,10 +270,12 @@ async function gerarPDF(){
 function getDocNumero(){
   return 'TEAM-8104-'+($('doc1').value||'XX')+'-'+($('doc2').value||'XXXX')+'-RFE-REP-'+($('doc3').value||'XXXX')+'-SS-'+($('doc4').value||'XX')+'-'+($('doc5').value||'20XX');
 }
-let _previewBytes = null;
-let _previewUrl   = null;
+let _previewBytes    = null;
+let _previewUrl      = null;
+let _keptPageIndices = null; // índices originais das páginas mantidas após remoção no preview
 
 async function abrirPreview(){
+  _keptPageIndices = null; // nova sessão de preview — descarta estado anterior
   $('previewModal').classList.add('show');
   $('previewFrame').src = 'about:blank';
   $('pageList').innerHTML = '<p class="sidebar-info" style="padding:8px">Gerando...</p>';
@@ -309,6 +322,13 @@ async function removerPaginasDesmarcadas(){
   const keep  = items.map((el,i)=>({i, checked: el.querySelector('input').checked}))
                      .filter(x=>x.checked).map(x=>x.i);
   if(keep.length===0){ alert('Selecione ao menos uma página para manter.'); return; }
+
+  // Mantém mapeamento para os índices do PDF original (para re-aplicar na geração final)
+  if(_keptPageIndices === null){
+    _keptPageIndices = keep;
+  } else {
+    _keptPageIndices = keep.map(i => _keptPageIndices[i]);
+  }
 
   const src   = await PDFDocument.load(_previewBytes);
   const dst   = await PDFDocument.create();
@@ -421,21 +441,17 @@ async function montarDatabook(){
 
 const ELABORADORES = [
   {
-    chaves:  ['carlos henrique', 'henrique'],
-    nome:    'Carlos Henrique P da Silva',
-    cargo:   'Técnico de Projeto',
-    email:   'Carlos.Henrique@teaminc.com',
-  },
-  {
     chaves:  ['lais', 'laís'],
     nome:    'Lais Souza Leite',
     cargo:   'Analista de Operações',
+    linha:   'Leak Repair Service Line',
     email:   'Lais.Leite@teaminc.com',
   },
   {
     chaves:  ['juliano'],
-    nome:    'Juliano Sobrinho',
-    cargo:   'Jovem Aprendiz',
+    nome:    'Juliano Narezi Sobrinho Junior',
+    cargo:   'Jovem Aprendiz de Operações',
+    linha:   'Leak Repair Service Line',
     email:   'Juliano.Sobrinho@teaminc.com',
   },
 ];
@@ -459,28 +475,32 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
   page.drawText(docNum,                         {x:tx, y:PAGE_H-48, size:10, font:fontBold, color:TEAM_BLUE});
   page.drawLine({start:{x:MARGIN, y:PAGE_H-66}, end:{x:PAGE_W-MARGIN, y:PAGE_H-66}, thickness:1.8, color:TEAM_BLUE});
 
-  // ---- SEÇÃO DE ENCERRAMENTO ----
-  let y = 345;
+  // ---- SEÇÃO DE ENCERRAMENTO (próxima ao rodapé) ----
+  let y = 200;
   page.drawText('Atenciosamente,', {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
-  y -= 32;
+  y -= 28;
   page.drawText(autor.nome,  {x:MARGIN, y, size:13, font:fontBold, color:TEAM_BLUE});
   y -= 16;
   if (autor.cargo) {
     page.drawText(autor.cargo, {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
-    y -= 16;
+    y -= 14;
   }
-  y -= 16;
+  if (autor.linha) {
+    page.drawText(autor.linha, {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
+    y -= 14;
+  }
+  y -= 14;
 
   // Logo TEAM
   const cLw = 180, cLh = Math.round(180 * 0.103);
   page.drawImage(logoTeamPng, {x:MARGIN, y, width:cLw, height:cLh});
   y -= 22;
 
-  // Dados de contato
+  // Dados de contato do elaborador
   const linhasContato = [
     'Avenida Nossa Senhora do Bom Sucesso, 3344 | Alto do Cardoso | Pindamonhangaba-SP | Brazil',
     '+55 12 3645-9104 direct',
-    ...(autor.email ? [autor.email] : []),
+    ...(autor.email ? [autor.email.toLowerCase()] : []),
     'www.TeamInc.com',
   ];
   for (const l of linhasContato) {
@@ -488,17 +508,20 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
     y -= 13;
   }
 
-  // ---- RODAPÉ ----
-  page.drawLine({start:{x:MARGIN, y:35}, end:{x:PAGE_W-MARGIN, y:35}, thickness:0.8, color:TEAM_BLUE});
+  // ---- RODAPÉ (fixo — não varia por elaborador) ----
+  // Linha 1: endereço (sem docNum para evitar sobreposição)
+  // Linha 2: telefone|email|www  +  docNum alinhado à direita
+  page.drawLine({start:{x:MARGIN, y:38}, end:{x:PAGE_W-MARGIN, y:38}, thickness:0.8, color:TEAM_BLUE});
   const boldLabel = 'TEAM Industrial Services';
-  page.drawText(boldLabel, {x:MARGIN, y:23, size:7, font:fontBold, color:TEAM_GRAY});
+  page.drawText(boldLabel, {x:MARGIN, y:26, size:7, font:fontBold, color:TEAM_GRAY});
   const bLw = fontBold.widthOfTextAtSize(boldLabel, 7);
-  page.drawText(' Avenida Nossa Senhora do Bom Sucesso, 3344 - Alto do Cardoso - Pindamonhangaba/SP, Brazil 12420-010', {x:MARGIN+bLw, y:23, size:7, font:fontReg, color:TEAM_GRAY});
-  page.drawText(docNum, {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:23, size:7, font:fontReg, color:TEAM_GRAY});
-  const emailRodape = autor.email || 'contato@teaminc.com';
-  const foot2 = `+55 12 3645-9104 | ${emailRodape} | `;
-  page.drawText(foot2, {x:MARGIN, y:11, size:7, font:fontReg, color:TEAM_GRAY});
-  page.drawText('www.TeamInc.com', {x:MARGIN+fontReg.widthOfTextAtSize(foot2,7), y:11, size:7, font:fontBold, color:TEAM_GRAY});
+  page.drawText(' Avenida Nossa Senhora do Bom Sucesso, 3344 - Alto do Cardoso - Pindamonhangaba/SP, Brazil 12420-010', {x:MARGIN+bLw, y:26, size:7, font:fontReg, color:TEAM_GRAY});
+
+  const foot2 = '+55 12 3645-9104|anderson.andrade@TeamInc.com|';
+  const wwwLabel = 'www.TeamInc.com';
+  page.drawText(foot2,    {x:MARGIN, y:13, size:7, font:fontReg,  color:TEAM_GRAY});
+  page.drawText(wwwLabel, {x:MARGIN+fontReg.widthOfTextAtSize(foot2,7), y:13, size:7, font:fontBold, color:TEAM_GRAY});
+  page.drawText(docNum,   {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:13, size:7, font:fontReg, color:TEAM_GRAY});
 }
 
 async function anexarPdf(targetPdf, source){
@@ -699,7 +722,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
     }
     pg.drawLine({start:{x:MARGIN,y:sigY}, end:{x:MARGIN+280,y:sigY}, thickness:0.5, color:BLACK});
     pg.drawText('Assinatura :', {x:MARGIN, y:sigY-13, size:9, font:fontBold, color:TEAM_GRAY});
-    pg.drawText('Cargo: '+($('cgCargo').value||'Gerente de Contrato'), {x:MARGIN, y:sigY-27, size:9, font:fontReg, color:BLACK});
+    pg.drawText('Cargo: '+($('cgCargo').value||'Supervisor Técnico'), {x:MARGIN, y:sigY-27, size:9, font:fontReg, color:BLACK});
   }
 
   // Assinatura fixada acima do rodapé (pág 1)
