@@ -126,7 +126,7 @@ header .actions {
 
 .layout {
     display: grid;
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: 176px 1fr;
     min-height: calc(100vh - 80px)
 }
 
