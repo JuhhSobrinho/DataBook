@@ -243,11 +243,17 @@ async function gerarPDF(){
     const blob = await montarDatabook();
     let bytes = await blob.arrayBuffer();
 
-    if(_keptPageIndices !== null){
-      // Aplica filtro de páginas removidas no preview, já com o formulário atual (inclui revisor)
+    // Determina quais páginas manter: preview modal tem prioridade, senão usa seleção do drawer
+    let keptIndices = _keptPageIndices;
+    if (keptIndices === null && _drawerPageMask !== null) {
+      const kept = _drawerPageMask.map((v, i) => v ? i : -1).filter(i => i >= 0);
+      if (kept.length < _drawerPageMask.length) keptIndices = kept;
+    }
+
+    if(keptIndices !== null){
       const src = await PDFDocument.load(bytes);
       const dst = await PDFDocument.create();
-      const pages = await dst.copyPages(src, _keptPageIndices);
+      const pages = await dst.copyPages(src, keptIndices);
       pages.forEach(p => dst.addPage(p));
       bytes = await dst.save();
     }
@@ -272,7 +278,81 @@ function getDocNumero(){
 }
 let _previewBytes    = null;
 let _previewUrl      = null;
-let _keptPageIndices = null; // índices originais das páginas mantidas após remoção no preview
+let _keptPageIndices = null;  // índices originais das páginas mantidas após remoção no preview
+let _thumbPanelOpen  = false; // estado do painel de miniaturas
+let _drawerPageMask  = null;  // null = todas as páginas; array de bool = seleção por página
+let _sidebarHidden   = false; // estado da sidebar de guias
+
+function toggleSidebar(){
+  _sidebarHidden = !_sidebarHidden;
+  document.body.classList.toggle('sidebar-hidden', _sidebarHidden);
+}
+
+function toggleThumbPanel(){
+  const drawer = document.getElementById('mainThumbDrawer');
+  const btn    = document.getElementById('btnMiniaturas');
+  _thumbPanelOpen = !_thumbPanelOpen;
+  drawer.classList.toggle('open', _thumbPanelOpen);
+  if (btn) btn.classList.toggle('active', _thumbPanelOpen);
+  if (_thumbPanelOpen) renderizarThumbnails();
+}
+
+async function renderizarThumbnails(){
+  const content = document.getElementById('mainThumbContent');
+  if (!content) return;
+  if (!window.pdfjsLib){ content.innerHTML = '<p class="thumb-empty">PDF.js nao carregado.</p>'; return; }
+
+  content.innerHTML = '<p class="thumb-empty">Gerando PDF...</p>';
+  try {
+    const blob  = await montarDatabook();
+    const bytes = await blob.arrayBuffer();
+    const pdf   = await pdfjsLib.getDocument({data: new Uint8Array(bytes)}).promise;
+    const total = pdf.numPages;
+
+    // Inicializa máscara com todas as páginas marcadas
+    _drawerPageMask = Array(total).fill(true);
+    content.innerHTML = '';
+
+    for (let i = 1; i <= total; i++){
+      const idx      = i - 1;
+      const page     = await pdf.getPage(i);
+      const viewport = page.getViewport({scale: 0.31});
+      const canvas   = document.createElement('canvas');
+      canvas.width   = viewport.width;
+      canvas.height  = viewport.height;
+      await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
+
+      const chk      = document.createElement('input');
+      chk.type       = 'checkbox';
+      chk.className  = 'thumb-check';
+      chk.checked    = true;
+
+      const num      = document.createElement('span');
+      num.className  = 'thumb-num';
+      num.textContent = 'Pág. ' + i;
+
+      const row      = document.createElement('div');
+      row.className  = 'thumb-check-row';
+      row.appendChild(chk);
+      row.appendChild(num);
+
+      const item     = document.createElement('div');
+      item.className = 'thumb-item';
+      item.appendChild(row);
+      item.appendChild(canvas);
+
+      chk.addEventListener('change', () => {
+        _drawerPageMask[idx] = chk.checked;
+        item.classList.toggle('excluded', !chk.checked);
+      });
+
+      content.appendChild(item);
+    }
+  } catch(e){
+    content.innerHTML = '<p class="thumb-empty">Erro ao gerar miniaturas.</p>';
+    console.error('Thumbnails:', e);
+  }
+}
 
 async function abrirPreview(){
   _keptPageIndices = null; // nova sessão de preview — descarta estado anterior

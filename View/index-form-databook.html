@@ -10,6 +10,8 @@
 <meta name="theme-color" content="#005eaa">
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
 </head>
 <body>
@@ -21,7 +23,17 @@
   </div>
   <button id="btnTema" class="btn btn-outline" onclick="alternarTema()" title="Alternar tema">🌙</button>
   <button id="btnInstalarPWA" class="btn btn-outline" onclick="instalarPWA()">⬇ Instalar App</button>
+  <button id="btnMiniaturas" class="btn btn-outline" onclick="toggleThumbPanel()" title="Miniaturas do databook">&#9776; Miniaturas</button>
 </header>
+<div id="mainThumbDrawer" class="main-thumb-drawer">
+  <div class="main-thumb-header">
+    <span>Miniaturas</span>
+    <button type="button" class="main-thumb-close" onclick="toggleThumbPanel()">&#x2715;</button>
+  </div>
+  <div id="mainThumbContent" class="main-thumb-content">
+    <p class="thumb-empty">Clique em "&#9776; Miniaturas" para gerar.</p>
+  </div>
+</div>
 
 <script>
   // Registra Service Worker
@@ -67,7 +79,9 @@
 </script>
 
 <div class="layout">
+<button type="button" id="btnExpandSidebar" class="sidebar-expand-tab" onclick="toggleSidebar()" title="Mostrar guias">&#9654;</button>
 <aside>
+  <button type="button" class="sidebar-collapse-btn" onclick="toggleSidebar()" title="Ocultar guias">&#9664;</button>
   <ol>
     <li><a href="#s1" class="nav-link">Capa</a></li>
     <li><a href="#s2" class="nav-link">Contracapa</a></li>
@@ -380,7 +394,7 @@
   <div class="modal-box">
     <div class="modal-header">
       <h3>Pre-visualizacao do Databook</h3>
-      <button class="close" onclick="fecharPreview()">x</button>
+      <button type="button" class="close" onclick="fecharPreview()">x</button>
     </div>
     <div class="modal-content">
       <div class="modal-sidebar">
