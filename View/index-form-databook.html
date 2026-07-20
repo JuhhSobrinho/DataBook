@@ -461,7 +461,10 @@
   // Preenche só se o campo estiver vazio (lookup único: contrato, team)
   function preencher(campo, valor) {
     const el = document.getElementById(campo);
-    if (el && !el.value) el.value = valor;
+    if (el && !el.value) {
+      el.value = valor;
+      if (valor) el.classList.add('campo-sincronizado');
+    }
   }
 
   // Sempre sincroniza (campos espelho da capa/contracapa)
@@ -469,8 +472,18 @@
     const el = document.getElementById(campo);
     if (!el) return;
     el.value = valor;
+    el.classList.toggle('campo-sincronizado', !!valor);
     if (dispararInput) el.dispatchEvent(new Event('input'));
   }
+
+  // Remove visual de sincronizado quando o usuário edita manualmente
+  ['cgTeam','cgContrato','cgPlaqueta','cgPO','cgData','cgTag'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    ['input','change'].forEach(ev =>
+      el.addEventListener(ev, e => { if (e.isTrusted) el.classList.remove('campo-sincronizado'); })
+    );
+  });
 
   function aplicarProjeto(projeto) {
     if (!projeto) return;

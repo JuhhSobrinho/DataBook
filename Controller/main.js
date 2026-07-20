@@ -243,17 +243,14 @@ async function gerarPDF(){
     const blob = await montarDatabook();
     let bytes = await blob.arrayBuffer();
 
-    // Determina quais páginas manter: preview modal tem prioridade, senão usa seleção do drawer
-    let keptIndices = _keptPageIndices;
-    if (keptIndices === null && _drawerPageMask !== null) {
-      const kept = _drawerPageMask.map((v, i) => v ? i : -1).filter(i => i >= 0);
-      if (kept.length < _drawerPageMask.length) keptIndices = kept;
-    }
+    // Passo 1: aplica seleção do drawer (páginas desmarcadas são removidas)
+    bytes = await _aplicarDrawerMask(bytes);
 
-    if(keptIndices !== null){
+    // Passo 2: aplica remoções feitas dentro do preview (sobre o resultado do passo 1)
+    if (_keptPageIndices !== null) {
       const src = await PDFDocument.load(bytes);
       const dst = await PDFDocument.create();
-      const pages = await dst.copyPages(src, keptIndices);
+      const pages = await dst.copyPages(src, _keptPageIndices);
       pages.forEach(p => dst.addPage(p));
       bytes = await dst.save();
     }
@@ -276,9 +273,21 @@ async function gerarPDF(){
 function getDocNumero(){
   return 'TEAM-8104-'+($('doc1').value||'XX')+'-'+($('doc2').value||'XXXX')+'-RFE-REP-'+($('doc3').value||'XXXX')+'-SS-'+($('doc4').value||'XX')+'-'+($('doc5').value||'20XX');
 }
+// Aplica a máscara do drawer ao ArrayBuffer de bytes de um PDF; retorna bytes filtrados
+async function _aplicarDrawerMask(bytes) {
+  if (!_drawerPageMask || !_drawerPageMask.some(v => !v)) return bytes;
+  const kept = _drawerPageMask.map((v, i) => v ? i : -1).filter(i => i >= 0);
+  if (kept.length === 0) return bytes;
+  const src = await PDFDocument.load(bytes);
+  const dst = await PDFDocument.create();
+  const pages = await dst.copyPages(src, kept);
+  pages.forEach(p => dst.addPage(p));
+  return await dst.save();
+}
+
 let _previewBytes    = null;
 let _previewUrl      = null;
-let _keptPageIndices = null;  // índices originais das páginas mantidas após remoção no preview
+let _keptPageIndices = null;  // índices das páginas mantidas após remoção DENTRO do preview
 let _thumbPanelOpen  = false; // estado do painel de miniaturas
 let _drawerPageMask  = null;  // null = todas as páginas; array de bool = seleção por página
 let _sidebarHidden   = false; // estado da sidebar de guias
@@ -363,7 +372,9 @@ async function abrirPreview(){
   $('btnRemovePages').disabled = true;
   try{
     const blob = await montarDatabook();
-    _previewBytes = await blob.arrayBuffer();
+    const rawBytes = await blob.arrayBuffer();
+    // Aplica seleção do drawer: preview mostra apenas páginas marcadas
+    _previewBytes = await _aplicarDrawerMask(rawBytes);
     _atualizarFrame();
     await _atualizarListaPaginas();
   }catch(e){ alert('Erro: '+e.message); }
