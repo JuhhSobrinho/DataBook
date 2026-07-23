@@ -240,19 +240,25 @@ async function gerarPDF(){
   const orig = btn.innerHTML;
   btn.innerHTML = '<span class="spinner"></span> Gerando...';
   try{
-    const blob = await montarDatabook();
-    let bytes = await blob.arrayBuffer();
+    let bytes;
+    if (_correctedBytes) {
+      // Usa bytes com correções de sobreposição já aplicadas (editadas no modo edição)
+      bytes = _correctedBytes;
+    } else {
+      const blob = await montarDatabook();
+      bytes = await blob.arrayBuffer();
 
-    // Passo 1: aplica seleção do drawer (páginas desmarcadas são removidas)
-    bytes = await _aplicarDrawerMask(bytes);
+      // Passo 1: aplica seleção do drawer (páginas desmarcadas são removidas)
+      bytes = await _aplicarDrawerMask(bytes);
 
-    // Passo 2: aplica remoções feitas dentro do preview (sobre o resultado do passo 1)
-    if (_keptPageIndices !== null) {
-      const src = await PDFDocument.load(bytes);
-      const dst = await PDFDocument.create();
-      const pages = await dst.copyPages(src, _keptPageIndices);
-      pages.forEach(p => dst.addPage(p));
-      bytes = await dst.save();
+      // Passo 2: aplica remoções feitas dentro do preview (sobre o resultado do passo 1)
+      if (_keptPageIndices !== null) {
+        const src = await PDFDocument.load(bytes);
+        const dst = await PDFDocument.create();
+        const pages = await dst.copyPages(src, _keptPageIndices);
+        pages.forEach(p => dst.addPage(p));
+        bytes = await dst.save();
+      }
     }
 
     const url = URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
@@ -273,11 +279,19 @@ async function gerarPDF(){
 function getDocNumero(){
   return 'TEAM-8104-'+($('doc1').value||'XX')+'-'+($('doc2').value||'XXXX')+'-RFE-REP-'+($('doc3').value||'XXXX')+'-SS-'+($('doc4').value||'XX')+'-'+($('doc5').value||'20XX');
 }
-// Aplica a máscara do drawer ao ArrayBuffer de bytes de um PDF; retorna bytes filtrados
+// Converte qualquer fonte de bytes para Uint8Array com backing buffer próprio (sem risco de detach)
+function _toU8(bytes) {
+  if (bytes instanceof Uint8Array) return bytes.slice(0);
+  if (bytes instanceof ArrayBuffer) return new Uint8Array(bytes.slice(0));
+  return new Uint8Array(bytes);
+}
+
+// Aplica a máscara do drawer ao ArrayBuffer de bytes de um PDF; retorna Uint8Array filtrado
 async function _aplicarDrawerMask(bytes) {
-  if (!_drawerPageMask || !_drawerPageMask.some(v => !v)) return bytes;
+  // Sempre retorna Uint8Array com buffer próprio
+  if (!_drawerPageMask || !_drawerPageMask.some(v => !v)) return _toU8(bytes);
   const kept = _drawerPageMask.map((v, i) => v ? i : -1).filter(i => i >= 0);
-  if (kept.length === 0) return bytes;
+  if (kept.length === 0) return _toU8(bytes);
   const src = await PDFDocument.load(bytes);
   const dst = await PDFDocument.create();
   const pages = await dst.copyPages(src, kept);
@@ -291,6 +305,14 @@ let _keptPageIndices = null;  // índices das páginas mantidas após remoção 
 let _thumbPanelOpen  = false; // estado do painel de miniaturas
 let _drawerPageMask  = null;  // null = todas as páginas; array de bool = seleção por página
 let _sidebarHidden   = false; // estado da sidebar de guias
+// Editor de sobreposição
+let _editMode        = false;
+let _editTool        = 'select'; // 'select' | 'add'
+let _editPdfJsDoc    = null;
+let _editCurrentPage = 1;
+let _editScale       = 1.5;
+let _editCorrections = [];    // [{page,x,y,w,h,text,fontSize,color}]
+let _correctedBytes  = null;  // bytes com correções já aplicadas
 
 function toggleSidebar(){
   _sidebarHidden = !_sidebarHidden;
@@ -365,6 +387,8 @@ async function renderizarThumbnails(){
 
 async function abrirPreview(){
   _keptPageIndices = null; // nova sessão de preview — descarta estado anterior
+  _correctedBytes  = null; // descarta correções de sobreposição anteriores
+  _editCorrections = [];
   $('previewModal').classList.add('show');
   $('previewFrame').src = 'about:blank';
   $('pageList').innerHTML = '<p class="sidebar-info" style="padding:8px">Gerando...</p>';
@@ -387,7 +411,7 @@ function _atualizarFrame(){
 }
 
 async function _atualizarListaPaginas(){
-  const doc   = await PDFDocument.load(_previewBytes);
+  const doc   = await PDFDocument.load(_toU8(_previewBytes));
   const total = doc.getPageCount();
   const list  = $('pageList');
   list.innerHTML = '';
@@ -421,12 +445,12 @@ async function removerPaginasDesmarcadas(){
     _keptPageIndices = keep.map(i => _keptPageIndices[i]);
   }
 
-  const src   = await PDFDocument.load(_previewBytes);
+  const src   = await PDFDocument.load(_toU8(_previewBytes));
   const dst   = await PDFDocument.create();
   const pages = await dst.copyPages(src, keep);
   pages.forEach(p=>dst.addPage(p));
 
-  _previewBytes = await dst.save();
+  _previewBytes = await dst.save(); // Uint8Array
   _atualizarFrame();
   await _atualizarListaPaginas();
 }
@@ -440,6 +464,7 @@ function pageListSelectAll(checked){
 }
 
 function fecharPreview(){
+  if (_editMode) sairEdicao();
   $('previewModal').classList.remove('show');
   if(_previewUrl){ URL.revokeObjectURL(_previewUrl); _previewUrl = null; }
   _previewBytes = null;
@@ -447,13 +472,264 @@ function fecharPreview(){
   $('pageTotalInfo').textContent = '';
   $('btnRemovePages').disabled = true;
 }
-function aprovarRevisao(){
-  const nome = $('revisorNome').value.trim();
-  if(!nome){ alert('Digite o nome do revisor.'); return; }
-  $('capaRev').value = nome;
-  alert('Revisor "'+nome+'" fixado na capa.');
+
+// ─── Modo de edição / sobreposição ──────────────────────────────────────────
+
+async function entrarModoEdicao(){
+  if(!_previewBytes){ alert('Abra o preview antes de editar.'); return; }
+  _editMode = true;
+  _editCurrentPage = 1;
+  _editCorrections = [];
+
+  // Começa no modo selecionar
+  setEditTool('select');
+
+  // Carrega PDF.js com uma CÓPIA dos bytes (getDocument transfere o buffer para o worker)
+  _editPdfJsDoc = await pdfjsLib.getDocument({data: _toU8(_previewBytes)}).promise;
+
+  // Troca iframe por editView
+  $('previewFrame').style.display = 'none';
+  $('editView').classList.add('active');
+
+  // Atualiza controles
+  _atualizarNavEdicao();
+  await renderEditPage(_editCurrentPage);
+}
+
+function setEditTool(tool){
+  _editTool = tool;
+  document.getElementById('editToolSelect').classList.toggle('active', tool==='select');
+  document.getElementById('editToolAdd').classList.toggle('active', tool==='add');
+  const wrap = $('editCanvasWrap');
+  if(wrap) wrap.classList.toggle('tool-add', tool==='add');
+  const hint = document.getElementById('editHint');
+  if(hint) hint.textContent = tool==='add'
+    ? 'Clique na pagina para adicionar uma caixa de texto'
+    : 'Arraste a caixa para mover; redimensione pelo canto inferior direito';
+}
+
+function sairEdicao(){
+  _editMode = false;
+  $('editView').classList.remove('active');
+  $('previewFrame').style.display = '';
+  // Limpa canvas e caixas
+  const wrap = $('editCanvasWrap');
+  wrap.querySelectorAll('.corr-box').forEach(b=>b.remove());
+  const ctx = $('editCanvas').getContext('2d');
+  ctx.clearRect(0,0,$('editCanvas').width,$('editCanvas').height);
+  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+}
+
+function _atualizarNavEdicao(){
+  const total = _editPdfJsDoc ? _editPdfJsDoc.numPages : 1;
+  const numEl = document.getElementById('editPageNum');
+  const totEl = document.getElementById('editTotalPages');
+  if(numEl) numEl.textContent = _editCurrentPage;
+  if(totEl) totEl.textContent = total;
+  const prev = document.getElementById('editPrevBtn');
+  const next = document.getElementById('editNextBtn');
+  if(prev) prev.disabled = _editCurrentPage <= 1;
+  if(next) next.disabled = _editCurrentPage >= total;
+}
+
+async function renderEditPage(num){
+  if(!_editPdfJsDoc) return;
+  _editCurrentPage = num;
+  _atualizarNavEdicao();
+
+  const page = await _editPdfJsDoc.getPage(num);
+  const vp   = page.getViewport({scale: _editScale});
+
+  const canvas = $('editCanvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = vp.width;
+  canvas.height = vp.height;
+  await page.render({canvasContext: ctx, viewport: vp}).promise;
+
+  // Remove caixas antigas e reposiciona as da página atual
+  const wrap = $('editCanvasWrap');
+  wrap.querySelectorAll('.corr-box').forEach(b=>b.remove());
+  _editCorrections
+    .filter(c=>c.page===num)
+    .forEach((c,idx)=>{ wrap.appendChild(_criarBoxDiv(c, idx)); });
+}
+
+async function editPrevPage(){
+  if(_editCurrentPage>1) await renderEditPage(_editCurrentPage-1);
+}
+async function editNextPage(){
+  if(_editPdfJsDoc && _editCurrentPage<_editPdfJsDoc.numPages) await renderEditPage(_editCurrentPage+1);
+}
+
+function editCanvasClick(e){
+  if(!_editMode || _editTool !== 'add') return;
+  // Ignora cliques originados de dentro de uma corr-box
+  if(e.target.closest && e.target.closest('.corr-box')) return;
+
+  const wrap   = $('editCanvasWrap');
+  const rect   = wrap.getBoundingClientRect();
+  const x      = e.clientX - rect.left;
+  const y      = e.clientY - rect.top;
+  const fsEl   = document.getElementById('editFontSize');
+  const colEl  = document.getElementById('editColor');
+  const fSize  = fsEl ? parseInt(fsEl.value)||12 : 12;
+  const color  = colEl ? colEl.value : '#000000';
+
+  const correction = {
+    page: _editCurrentPage,
+    x, y,
+    w: 190, h: fSize + 10,
+    text: '',
+    fontSize: fSize,
+    color
+  };
+  _editCorrections.push(correction);
+  const idx = _editCorrections.length-1;
+  const box = _criarBoxDiv(correction, idx);
+  wrap.appendChild(box);
+  // Foca no textarea para digitar imediatamente
+  const ta = box.querySelector('textarea');
+  if(ta) setTimeout(()=>ta.focus(), 30);
+}
+
+function _criarBoxDiv(corr, idx){
+  const box = document.createElement('div');
+  box.className = 'corr-box';
+  box.dataset.idx = idx;
+  box.style.left   = corr.x+'px';
+  box.style.top    = corr.y+'px';
+  box.style.width  = corr.w+'px';
+  box.style.height = corr.h+'px';
+
+  const ta = document.createElement('textarea');
+  ta.value          = corr.text;
+  ta.style.fontSize = corr.fontSize+'px';
+  ta.style.color    = corr.color;
+  ta.addEventListener('input', ()=>{ _editCorrections[idx].text = ta.value; });
+  // Impede que clique/mousedown no textarea propague para o canvas
+  ta.addEventListener('mousedown', e=>e.stopPropagation());
+  ta.addEventListener('click',     e=>e.stopPropagation());
+
+  // Drag para mover — ativado somente no modo 'select'
+  let dragging=false, ox=0, oy=0;
+  box.addEventListener('mousedown', e=>{
+    if(e.target===ta) return; // textarea gerencia o próprio cursor
+    if(_editTool !== 'select') return;
+    dragging=true;
+    ox = e.clientX - box.offsetLeft;
+    oy = e.clientY - box.offsetTop;
+    e.preventDefault();
+    e.stopPropagation(); // não cria nova box no canvas
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const nx = e.clientX - ox, ny = e.clientY - oy;
+    box.style.left = nx+'px';
+    box.style.top  = ny+'px';
+    _editCorrections[idx].x = nx;
+    _editCorrections[idx].y = ny;
+  });
+  document.addEventListener('mouseup', ()=>{ dragging=false; });
+
+  // ResizeObserver acompanha redimensionamento nativo (CSS resize)
+  if(window.ResizeObserver){
+    new ResizeObserver(()=>{
+      _editCorrections[idx].w = box.offsetWidth;
+      _editCorrections[idx].h = box.offsetHeight;
+    }).observe(box);
+  }
+
+  const del = document.createElement('button');
+  del.className = 'corr-del';
+  del.type = 'button';
+  del.textContent = '×';
+  del.addEventListener('mousedown', e=>e.stopPropagation());
+  del.onclick = e=>{ e.stopPropagation(); deletarCorrecao(idx); };
+
+  box.appendChild(ta);
+  box.appendChild(del);
+  return box;
+}
+
+function deletarCorrecao(idx){
+  _editCorrections[idx] = null; // marca como deletada
+  $('editCanvasWrap').querySelectorAll('.corr-box').forEach(b=>{
+    if(parseInt(b.dataset.idx)===idx) b.remove();
+  });
+}
+
+async function aplicarCorrecoes(){
+  if(!_previewBytes){ alert('Nenhum PDF no preview.'); return; }
+
+  const doc  = await PDFDocument.load(_toU8(_previewBytes));
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const pages = doc.getPages();
+
+  const corrections = _editCorrections.filter(Boolean);
+  for(const c of corrections){
+    const pdfPage = pages[c.page-1];
+    if(!pdfPage) continue;
+    const {width, height} = pdfPage.getSize();
+    // Converte coordenadas: canvas Y from top → pdf-lib Y from bottom
+    const pdfX = c.x / _editScale;
+    const boxH = Math.max(20, c.h) / _editScale;
+    const pdfY = height - (c.y / _editScale) - boxH;
+    const pdfW = c.w / _editScale;
+
+    // Retângulo branco de cobertura
+    pdfPage.drawRectangle({
+      x: pdfX, y: pdfY, width: pdfW, height: boxH,
+      color: rgb(1,1,1), opacity: 1,
+    });
+
+    // Converte cor hex → rgb
+    const hex = c.color.replace('#','');
+    const r = parseInt(hex.substring(0,2),16)/255;
+    const g = parseInt(hex.substring(2,4),16)/255;
+    const b = parseInt(hex.substring(4,6),16)/255;
+
+    // Texto
+    if(c.text.trim()){
+      const lines = c.text.split('\n');
+      const fsPt  = c.fontSize * 0.75; // px → pt aprox
+      let lineY   = pdfY + boxH - fsPt - 2;
+      for(const line of lines){
+        if(!line) { lineY -= fsPt*1.3; continue; }
+        pdfPage.drawText(line, {
+          x: pdfX+3, y: lineY,
+          size: fsPt, font,
+          color: rgb(r,g,b),
+          maxWidth: pdfW-6,
+        });
+        lineY -= fsPt*1.3;
+      }
+    }
+  }
+
+  _correctedBytes = await doc.save();
+  _previewBytes   = _correctedBytes;
+
+  // Recarrega o preview com o PDF corrigido
+  sairEdicao();
+  _atualizarFrame();
+
+  alert('Correções aplicadas! O PDF final incluirá as sobreposições.');
+}
+
+function toggleFullscreen(){
+  const box = document.querySelector('.modal-box');
+  if(!box) return;
+  if(document.fullscreenElement){
+    document.exitFullscreen().catch(()=>{});
+  } else {
+    box.requestFullscreen().catch(()=>{});
+  }
+}
+
+async function gerarPDFDoPreview(){
+  // Gera o PDF direto do preview sem precisar fechar a modal
   fecharPreview();
-  updateStatus();
+  await gerarPDF();
 }
 
 async function montarDatabook(){

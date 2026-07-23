@@ -393,11 +393,14 @@
 <div class="modal" id="previewModal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3>Pre-visualizacao do Databook</h3>
-      <button type="button" class="close" onclick="fecharPreview()">x</button>
+      <h3 id="modalTitle">Pre-visualizacao do Databook</h3>
+      <div class="modal-header-actions">
+        <button type="button" class="btn-modal-icon" id="btnFullscreen" onclick="toggleFullscreen()" title="Tela cheia">&#x26F6;</button>
+        <button type="button" class="close" onclick="fecharPreview()">&#x2715;</button>
+      </div>
     </div>
     <div class="modal-content">
-      <div class="modal-sidebar">
+      <div class="modal-sidebar" id="previewSidebar">
         <div class="sidebar-section-label">Paginas</div>
         <p id="pageTotalInfo" class="sidebar-info"></p>
         <div class="sidebar-row">
@@ -407,13 +410,48 @@
         <div id="pageList" class="page-list"><p class="sidebar-info" style="padding:8px">Abra o preview para listar.</p></div>
         <button class="btn-remove-pages" id="btnRemovePages" onclick="removerPaginasDesmarcadas()" disabled>Remover desmarcadas</button>
       </div>
-      <div class="modal-body"><iframe id="previewFrame"></iframe></div>
+      <div class="modal-body">
+        <iframe id="previewFrame"></iframe>
+        <div id="editView" class="edit-view">
+          <div class="edit-toolbar">
+            <button type="button" class="btn-tiny" id="editPrevBtn" onclick="editPrevPage()" disabled>&#9664; Ant.</button>
+            <span class="edit-page-info">Pag. <strong id="editPageNum">1</strong> / <strong id="editTotalPages">1</strong></span>
+            <button type="button" class="btn-tiny" id="editNextBtn" onclick="editNextPage()" disabled>Prox. &#9654;</button>
+            <div class="edit-sep"></div>
+            <div class="edit-tool-group" title="Modo da ferramenta">
+              <button type="button" class="edit-tool-btn active" id="editToolSelect" onclick="setEditTool('select')" title="Selecionar / mover caixa">&#8593;</button>
+              <button type="button" class="edit-tool-btn" id="editToolAdd" onclick="setEditTool('add')" title="Adicionar caixa de texto">&#xFF0B;</button>
+            </div>
+            <div class="edit-sep"></div>
+            <label class="edit-label">Tamanho:
+              <select id="editFontSize" class="edit-select">
+                <option value="8">8</option><option value="9">9</option>
+                <option value="10">10</option><option value="11" selected>11</option>
+                <option value="12">12</option><option value="14">14</option>
+                <option value="16">16</option><option value="18">18</option>
+                <option value="20">20</option><option value="24">24</option>
+              </select>
+            </label>
+            <label class="edit-label">Cor: <input type="color" id="editColor" value="#000000" class="edit-color"></label>
+            <div class="edit-sep"></div>
+            <span class="edit-hint" id="editHint">Modo selecao: arraste para mover, redimensione pelo canto inferior direito</span>
+            <div style="flex:1"></div>
+            <button type="button" class="btn btn-ok" onclick="aplicarCorrecoes()">&#10003; Aplicar</button>
+            <button type="button" class="btn btn-outline" onclick="sairEdicao()">&#x2715; Cancelar</button>
+          </div>
+          <div class="edit-stage" id="editStage">
+            <div id="editCanvasWrap" class="edit-canvas-wrap" onclick="editCanvasClick(event)">
+              <canvas id="editCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="modal-footer">
-      <label style="font-weight:600;font-size:13px;color:var(--team-gray)">Nome do Revisor:</label>
-      <input type="text" id="revisorNome" placeholder="Digite o nome do revisor que esta aprovando">
-      <button class="btn" onclick="aprovarRevisao()">Aprovar e fixar revisor</button>
+    <div class="modal-footer" id="previewFooter">
+      <button type="button" class="btn btn-outline" id="btnEditar" onclick="entrarModoEdicao()" title="Corrigir dados nas paginas digitalizadas">&#x270F; Editar paginas</button>
+      <div style="flex:1"></div>
       <button class="btn btn-outline" onclick="fecharPreview()">Fechar</button>
+      <button type="button" class="btn btn-ok" onclick="gerarPDFDoPreview()">&#8595; Gerar PDF</button>
     </div>
   </div>
 </div>
