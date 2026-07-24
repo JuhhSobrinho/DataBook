@@ -71,11 +71,23 @@ function setupFoto(inputId, zoneId, nameId, stateKey){
   const inp = $(inputId);
   if(!inp) return;
   inp.addEventListener('change', async ()=>{
-    if(!inp.files[0]) return;
-    STATE[stateKey]         = await fileToBuffer(inp.files[0]);
-    STATE[stateKey+'Type']  = inp.files[0].type;
-    $(nameId).textContent   = '[OK] ' + inp.files[0].name;
+    const file = inp.files[0];
+    if(!file) return;
+    STATE[stateKey]        = await fileToBuffer(file);
+    STATE[stateKey+'Type'] = file.type;
+    $(nameId).textContent  = file.name;
     $(zoneId).classList.add('has-file');
+
+    // Preview da imagem na zona de upload
+    const previewId = inputId.replace('File', 'Preview');
+    const prev = document.getElementById(previewId);
+    if(prev){
+      const url = URL.createObjectURL(file);
+      prev.onload = () => URL.revokeObjectURL(url);
+      prev.src = url;
+      prev.style.display = 'block';
+      $(nameId).style.display = 'none';
+    }
   });
 }
 setupFoto('fotoAntesFile','fotoAntesZone','fotoAntesName','fotoAntes');

@@ -333,15 +333,17 @@
       <div class="grid grid-2">
         <div class="field">
           <label>Foto Antes da Execucao</label>
-          <div class="upload-zone" id="fotoAntesZone" onclick="document.getElementById('fotoAntesFile').click()">
-            <p id="fotoAntesName">Clique para selecionar (JPG ou PNG)</p>
+          <div class="upload-zone foto-zone" id="fotoAntesZone" onclick="document.getElementById('fotoAntesFile').click()">
+            <img id="fotoAntesPreview" class="foto-preview" style="display:none" alt="Preview antes">
+            <p id="fotoAntesName" class="foto-placeholder">Clique para selecionar (JPG ou PNG)</p>
             <input type="file" id="fotoAntesFile" accept="image/jpeg,image/png" style="display:none">
           </div>
         </div>
         <div class="field">
           <label>Foto Apos Execucao</label>
-          <div class="upload-zone" id="fotoDepoisZone" onclick="document.getElementById('fotoDepoisFile').click()">
-            <p id="fotoDepoisName">Clique para selecionar (JPG ou PNG)</p>
+          <div class="upload-zone foto-zone" id="fotoDepoisZone" onclick="document.getElementById('fotoDepoisFile').click()">
+            <img id="fotoDepoisPreview" class="foto-preview" style="display:none" alt="Preview apos">
+            <p id="fotoDepoisName" class="foto-placeholder">Clique para selecionar (JPG ou PNG)</p>
             <input type="file" id="fotoDepoisFile" accept="image/jpeg,image/png" style="display:none">
           </div>
         </div>
