@@ -299,7 +299,7 @@
     </div>
     <div class="cert-section">
       <h4>Descricao do Servico</h4>
-      <div class="field"><textarea id="cgDescricao">REALIZADO REFORCO ESTRUTURAL COM FIBRA DE CARBONO EM LINHA DE 2" E APLICACAO DE JOTUN JOTACHAR JF750 XT COMP A+B.</textarea></div>
+      <div class="field"><textarea id="cgDescricao" placeholder="Preenchido automaticamente pela TAG e fichas tecnicas selecionadas"></textarea></div>
     </div>
     <div class="cert-section">
       <h4>Dados Tecnicos do Reparo</h4>
@@ -515,7 +515,7 @@
   }
 
   // Remove visual de sincronizado quando o usuário edita manualmente
-  ['cgTeam','cgContrato','cgPlaqueta','cgPO','cgData','cgTag'].forEach(id => {
+  ['cgTeam','cgContrato','cgPlaqueta','cgPO','cgData','cgTag','cgDescricao'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     ['input','change'].forEach(ev =>
@@ -570,7 +570,38 @@
   const tagEquipEl = document.getElementById('tagEquip');
   if (tagEquipEl) tagEquipEl.addEventListener('input', function() {
     sincronizar('cgTag', this.value);
+    atualizarDescricao();
   });
+
+  // ── Fichas técnicas → atualiza descrição ao marcar/desmarcar Jotun ───────
+  document.querySelectorAll('input[name="ficha"]').forEach(cb => {
+    cb.addEventListener('change', atualizarDescricao);
+  });
+
+  function atualizarDescricao() {
+    const descEl = document.getElementById('cgDescricao');
+    if (!descEl) return;
+    // Se o usuário editou manualmente (sem borda verde), não sobrescreve
+    if (!descEl.classList.contains('campo-sincronizado') && descEl.value.trim() !== '') return;
+
+    const tag = (document.getElementById('tagEquip') || {}).value || '';
+    // Extrai tudo antes do primeiro '-' (ex: 2"-DA-B10S-456 → 2", 2"x4"-DA-B10S → 2"x4")
+    const match = tag.trim().match(/^([^-]+)/);
+    const linha = match ? match[1].trim() : '';
+
+    const jotunMarcado = !!document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]:checked');
+
+    let desc = 'REALIZADO REFORCO ESTRUTURAL COM FIBRA DE CARBONO EM LINHA DE';
+    if (linha) desc += ' ' + linha;
+    if (jotunMarcado) desc += ' E APLICACAO DE JOTUN JOTACHAR JF750 XT COMP A+B.';
+
+    // Só aplica se algo mudou
+    if (descEl.value === desc) return;
+
+    descEl.value = desc;
+    descEl.classList.add('campo-sincronizado');
+    descEl.dispatchEvent(new Event('change'));
+  }
 
   // ── Elaborado por → última página (ELABORADORES em main.js) ─────────────
   // O Responsável/Assinatura do certificado é fixo: Henrique Biondi
