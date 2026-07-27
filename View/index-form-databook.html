@@ -520,7 +520,7 @@
   }
 
   // Remove visual de sincronizado quando o usuário edita manualmente
-  ['cgTeam','cgContrato','cgPlaqueta','cgPO','cgData','cgTag','cgDescricao'].forEach(id => {
+  ['cgTeam','cgContrato','cgPlaqueta','cgPO','cgData','cgTag','cgDescricao','cgSerial'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     ['input','change'].forEach(ev =>
@@ -576,6 +576,16 @@
   if (tagEquipEl) tagEquipEl.addEventListener('input', function() {
     sincronizar('cgTag', this.value);
     atualizarDescricao();
+  });
+
+  // ── Memorial de cálculo → Serial (dígitos iniciais do nome do arquivo) ───
+  const memFileEl = document.getElementById('memFile');
+  if (memFileEl) memFileEl.addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    const semExt = file.name.replace(/\.[^.]+$/, '');
+    const match  = semExt.match(/^(\d+)/);
+    if (match) sincronizar('cgSerial', match[1]);
   });
 
   // ── Fichas técnicas → atualiza descrição ao marcar/desmarcar Jotun ───────
