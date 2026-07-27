@@ -67,10 +67,11 @@ self.addEventListener('fetch', e => {
         caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         return response;
       }).catch(() => {
-        // Offline e não cacheado — retorna página principal como fallback
         if (e.request.destination === 'document') {
           return caches.match(BASE + 'index.html');
         }
+        // Recurso não cacheado e offline — retorna 503 explícito
+        return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
       });
     })
   );

@@ -265,7 +265,7 @@ async function gerarPDF(){
 
       // Passo 2: aplica remoções feitas dentro do preview (sobre o resultado do passo 1)
       if (_keptPageIndices !== null) {
-        const src = await PDFDocument.load(bytes);
+        const src = await PDFDocument.load(bytes, {ignoreEncryption: true});
         const dst = await PDFDocument.create();
         const pages = await dst.copyPages(src, _keptPageIndices);
         pages.forEach(p => dst.addPage(p));
@@ -304,7 +304,7 @@ async function _aplicarDrawerMask(bytes) {
   if (!_drawerPageMask || !_drawerPageMask.some(v => !v)) return _toU8(bytes);
   const kept = _drawerPageMask.map((v, i) => v ? i : -1).filter(i => i >= 0);
   if (kept.length === 0) return _toU8(bytes);
-  const src = await PDFDocument.load(bytes);
+  const src = await PDFDocument.load(bytes, {ignoreEncryption: true});
   const dst = await PDFDocument.create();
   const pages = await dst.copyPages(src, kept);
   pages.forEach(p => dst.addPage(p));
@@ -423,7 +423,7 @@ function _atualizarFrame(){
 }
 
 async function _atualizarListaPaginas(){
-  const doc   = await PDFDocument.load(_toU8(_previewBytes));
+  const doc   = await PDFDocument.load(_toU8(_previewBytes), {ignoreEncryption: true});
   const total = doc.getPageCount();
   const list  = $('pageList');
   list.innerHTML = '';
@@ -457,7 +457,7 @@ async function removerPaginasDesmarcadas(){
     _keptPageIndices = keep.map(i => _keptPageIndices[i]);
   }
 
-  const src   = await PDFDocument.load(_toU8(_previewBytes));
+  const src   = await PDFDocument.load(_toU8(_previewBytes), {ignoreEncryption: true});
   const dst   = await PDFDocument.create();
   const pages = await dst.copyPages(src, keep);
   pages.forEach(p=>dst.addPage(p));
@@ -673,7 +673,7 @@ function deletarCorrecao(idx){
 async function aplicarCorrecoes(){
   if(!_previewBytes){ alert('Nenhum PDF no preview.'); return; }
 
-  const doc  = await PDFDocument.load(_toU8(_previewBytes));
+  const doc  = await PDFDocument.load(_toU8(_previewBytes), {ignoreEncryption: true});
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const pages = doc.getPages();
 

@@ -22,7 +22,7 @@
     <h2>Relatorio Final de Execucao - TEAM Industrial Services</h2>
   </div>
   <button id="btnTema" class="btn btn-outline" onclick="alternarTema()" title="Alternar tema">🌙</button>
-  <button id="btnInstalarPWA" class="btn btn-outline" onclick="instalarPWA()">⬇ Instalar App</button>
+  <button id="btnInstalarPWA" class="btn btn-outline" onclick="instalarPWA()" style="display:none">⬇ Instalar App</button>
   <button id="btnMiniaturas" class="btn btn-outline" onclick="toggleThumbPanel()" title="Miniaturas do databook">&#9776; Miniaturas</button>
 </header>
 <div id="mainThumbDrawer" class="main-thumb-drawer">
@@ -60,21 +60,24 @@
     document.getElementById('btnTema').textContent = t === 'dark' ? '☀️' : '🌙';
   });
   let _pwaPrompt = null;
+  const _btnPWA = document.getElementById('btnInstalarPWA');
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _pwaPrompt = e;
+    if (_btnPWA) _btnPWA.style.display = '';
   });
   window.addEventListener('appinstalled', () => {
     _pwaPrompt = null;
+    if (_btnPWA) _btnPWA.style.display = 'none';
   });
   async function instalarPWA() {
-    if (!_pwaPrompt) {
-      alert('App já instalado ou instalação não disponível neste navegador.');
-      return;
-    }
-    _pwaPrompt.prompt();
+    if (!_pwaPrompt) return;
+    await _pwaPrompt.prompt();
     const { outcome } = await _pwaPrompt.userChoice;
-    if (outcome === 'accepted') _pwaPrompt = null;
+    if (outcome === 'accepted') {
+      _pwaPrompt = null;
+      if (_btnPWA) _btnPWA.style.display = 'none';
+    }
   }
 </script>
 
