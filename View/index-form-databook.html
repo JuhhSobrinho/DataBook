@@ -560,6 +560,8 @@
 
     // Data da capa → data do certificado
     if (data) sincronizar('cgData', data);
+
+    atualizarDescricao();
   }
 
   ['doc1','doc2','doc3','doc4','doc5'].forEach(id => {
@@ -593,6 +595,12 @@
     cb.addEventListener('change', atualizarDescricao);
   });
 
+  // ── Data e PDA → atualiza descrição ao editar manualmente ────────────────
+  const cgDataEl2 = document.getElementById('cgData');
+  if (cgDataEl2) cgDataEl2.addEventListener('change', atualizarDescricao);
+  const cgPDAEl = document.getElementById('cgPDA');
+  if (cgPDAEl) cgPDAEl.addEventListener('input', atualizarDescricao);
+
   function atualizarDescricao() {
     const descEl = document.getElementById('cgDescricao');
     if (!descEl) return;
@@ -600,17 +608,35 @@
     if (!descEl.classList.contains('campo-sincronizado') && descEl.value.trim() !== '') return;
 
     const tag = (document.getElementById('tagEquip') || {}).value || '';
-    // Extrai tudo antes do primeiro '-' (ex: 2"-DA-B10S-456 → 2", 2"x4"-DA-B10S → 2"x4")
-    const match = tag.trim().match(/^([^-]+)/);
-    const linha = match ? match[1].trim() : '';
+    const matchTag = tag.trim().match(/^([^-]+)/);
+    const linha = matchTag ? matchTag[1].trim() : '';
 
     const jotunMarcado = !!document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]:checked');
+
+    // PDA: pega a parte antes do " - " (ex: "25-0206232 - venc. 24/04/2030" → "25-0206232")
+    const pdaVal = (document.getElementById('cgPDA') || {}).value || '';
+    const pdaNum = pdaVal.split(' - ')[0].trim();
+
+    // Vencimento do reparo = data do certificado (cgData, formato YYYY-MM-DD) + 5 anos
+    const dataEl  = document.getElementById('cgData');
+    const dataIso = dataEl ? dataEl.value : '';   // YYYY-MM-DD
+    let vencimento = '';
+    if (dataIso && dataIso.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [y, m, d] = dataIso.split('-').map(Number);
+      const dt = new Date(y + 5, m - 1, d);
+      vencimento = String(dt.getDate()).padStart(2,'0') + '/' +
+                   String(dt.getMonth() + 1).padStart(2,'0') + '/' +
+                   dt.getFullYear();
+    }
 
     let desc = 'REALIZADO REFORCO ESTRUTURAL COM FIBRA DE CARBONO EM LINHA DE';
     if (linha) desc += ' ' + linha;
     if (jotunMarcado) desc += ' E APLICACAO DE JOTUN JOTACHAR JF750 XT COMP A+B.';
+    if (pdaNum) {
+      desc += ' PDA ' + pdaNum + ' COM VENCIMENTO EM';
+      desc += vencimento ? ' ' + vencimento + '.' : '.';
+    }
 
-    // Só aplica se algo mudou
     if (descEl.value === desc) return;
 
     descEl.value = desc;
