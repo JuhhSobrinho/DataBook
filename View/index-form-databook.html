@@ -297,7 +297,7 @@
         <div class="field"><label># TEAM</label><input type="text" id="cgTeam" placeholder="8104-23-0048"></div>
         <div class="field"><label># Plaqueta</label><input type="text" id="cgPlaqueta" placeholder="3535" oninput="updateCertifPreview()"><small id="cgCertifPreview" style="color:var(--team-blue);font-weight:600;display:block;margin-top:4px"></small></div>
         <div class="field"><label># Serial</label><input type="text" id="cgSerial" placeholder="23004825226"></div>
-        <div class="field"><label>PDA / Vencimento</label><input type="text" id="cgPDA" placeholder="25-0206232 - venc. 24/04/2030"></div>
+        <div class="field"><label>PDA / Vencimento</label><input type="text" id="cgPDA" value="25-0206232" placeholder="25-0206232 - venc. 24/04/2030"></div>
       </div>
     </div>
     <div class="cert-section">
@@ -595,9 +595,9 @@
     cb.addEventListener('change', atualizarDescricao);
   });
 
-  // ── Data da capa e PDA → atualiza descrição ao editar ────────────────────
-  const capaDataEl2 = document.getElementById('capaData');
-  if (capaDataEl2) capaDataEl2.addEventListener('change', atualizarDescricao);
+  // ── Data do certificado e PDA → atualiza descrição ao editar ────────────
+  const cgDataEl2 = document.getElementById('cgData');
+  if (cgDataEl2) cgDataEl2.addEventListener('change', atualizarDescricao);
   const cgPDAEl = document.getElementById('cgPDA');
   if (cgPDAEl) cgPDAEl.addEventListener('input', atualizarDescricao);
 
@@ -607,19 +607,21 @@
     // Se o usuário editou manualmente (sem borda verde), não sobrescreve
     if (!descEl.classList.contains('campo-sincronizado') && descEl.value.trim() !== '') return;
 
-    const tag = (document.getElementById('tagEquip') || {}).value || '';
+    // Tamanho da linha: tudo antes do primeiro '-' na TAG (ex: 2"-DA-B10S-456 → 2")
+    const tag      = (document.getElementById('tagEquip') || {}).value || '';
     const matchTag = tag.trim().match(/^([^-]+)/);
-    const linha = matchTag ? matchTag[1].trim() : '';
+    const linha    = matchTag ? matchTag[1].trim() : '';
 
+    // Jotun: opcional
     const jotunMarcado = !!document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]:checked');
 
-    // PDA: pega a parte antes do " - " (ex: "25-0206232 - venc. 24/04/2030" → "25-0206232")
+    // PDA: parte antes do primeiro " - " (ex: "25-0206232 - venc. 24/04/2030" → "25-0206232")
     const pdaVal = (document.getElementById('cgPDA') || {}).value || '';
-    const pdaNum = pdaVal.split(' - ')[0].trim();
+    const pdaNum = pdaVal.split(/\s+-\s+/)[0].trim();
 
-    // Vencimento do reparo = data da capa/RDE (capaData, formato YYYY-MM-DD) + 5 anos
-    const dataEl  = document.getElementById('capaData');
-    const dataIso = dataEl ? dataEl.value : '';   // YYYY-MM-DD
+    // Vencimento = cgData (data do certificado/RDE, YYYY-MM-DD) + 5 anos
+    const dataEl  = document.getElementById('cgData');
+    const dataIso = dataEl ? dataEl.value : '';
     let vencimento = '';
     if (dataIso && dataIso.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [y, m, d] = dataIso.split('-').map(Number);
@@ -629,16 +631,17 @@
                    dt.getFullYear();
     }
 
+    // Monta descrição
     let desc = 'REALIZADO REFORCO ESTRUTURAL COM FIBRA DE CARBONO EM LINHA DE';
     if (linha) desc += ' ' + linha;
     if (jotunMarcado) desc += ' E APLICACAO DE JOTUN JOTACHAR JF750 XT COMP A+B.';
     if (pdaNum) {
-      desc += ' PDA ' + pdaNum + ' COM VENCIMENTO EM';
-      desc += vencimento ? ' ' + vencimento + '.' : '.';
+      desc += ' PDA ' + pdaNum + ' - Venc.';
+      if (vencimento) desc += ' ' + vencimento;
+      desc += '.';
     }
 
     if (descEl.value === desc) return;
-
     descEl.value = desc;
     descEl.classList.add('campo-sincronizado');
     descEl.dispatchEvent(new Event('change'));
