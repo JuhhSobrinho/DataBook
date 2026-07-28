@@ -625,7 +625,7 @@
     let vencimento = '';
     if (dataIso && dataIso.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [y, m, d] = dataIso.split('-').map(Number);
-      const dt = new Date(y + 5, m - 1, d);
+      const dt = new Date(y + 4, m - 1, d);
       vencimento = String(dt.getDate()).padStart(2,'0') + '/' +
                    String(dt.getMonth() + 1).padStart(2,'0') + '/' +
                    dt.getFullYear();
