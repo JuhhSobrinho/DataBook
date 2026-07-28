@@ -595,9 +595,9 @@
     cb.addEventListener('change', atualizarDescricao);
   });
 
-  // ── Data e PDA → atualiza descrição ao editar manualmente ────────────────
-  const cgDataEl2 = document.getElementById('cgData');
-  if (cgDataEl2) cgDataEl2.addEventListener('change', atualizarDescricao);
+  // ── Data da capa e PDA → atualiza descrição ao editar ────────────────────
+  const capaDataEl2 = document.getElementById('capaData');
+  if (capaDataEl2) capaDataEl2.addEventListener('change', atualizarDescricao);
   const cgPDAEl = document.getElementById('cgPDA');
   if (cgPDAEl) cgPDAEl.addEventListener('input', atualizarDescricao);
 
@@ -617,8 +617,8 @@
     const pdaVal = (document.getElementById('cgPDA') || {}).value || '';
     const pdaNum = pdaVal.split(' - ')[0].trim();
 
-    // Vencimento do reparo = data do certificado (cgData, formato YYYY-MM-DD) + 5 anos
-    const dataEl  = document.getElementById('cgData');
+    // Vencimento do reparo = data da capa/RDE (capaData, formato YYYY-MM-DD) + 5 anos
+    const dataEl  = document.getElementById('capaData');
     const dataIso = dataEl ? dataEl.value : '';   // YYYY-MM-DD
     let vencimento = '';
     if (dataIso && dataIso.match(/^\d{4}-\d{2}-\d{2}$/)) {
