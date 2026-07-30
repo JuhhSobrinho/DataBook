@@ -946,8 +946,8 @@ function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
   const dnW = fontBold.widthOfTextAtSize(docNum, 10);
   const dnX = txtX + (txtW - dnW) / 2;
   page.drawText(docNum, {x:dnX, y:PAGE_H - 42, size:10, font:fontBold, color:TEAM_GRAY});
-  page.drawLine({start:{x:dnX-6,     y:HDR_BOT+3}, end:{x:dnX-6,     y:HDR_BOT+16}, thickness:0.7, color:TEAM_GRAY});
-  page.drawLine({start:{x:dnX+dnW+6, y:HDR_BOT+3}, end:{x:dnX+dnW+6, y:HDR_BOT+16}, thickness:0.7, color:TEAM_GRAY});
+  page.drawLine({start:{x:dnX-6,     y:HDR_BOT+13}, end:{x:dnX-6,     y:HDR_BOT+24}, thickness:0.7, color:TEAM_GRAY});
+  page.drawLine({start:{x:dnX+dnW+6, y:HDR_BOT+13}, end:{x:dnX+dnW+6, y:HDR_BOT+24}, thickness:0.7, color:TEAM_GRAY});
 
   // Orange horizontal bottom line
   page.drawLine({start:{x:MARGIN, y:HDR_BOT}, end:{x:PAGE_W-MARGIN, y:HDR_BOT}, thickness:0.8, color:ORANGE});
