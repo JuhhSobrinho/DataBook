@@ -921,16 +921,62 @@ async function anexarPdf(targetPdf, source){
 }
 
 function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
-  const lw = 110, lh = 110*0.103;
-  page.drawImage(logoPng, {x: MARGIN, y: PAGE_H - 38, width: lw, height: lh});
-  const titulo = 'RELATORIO FINAL DE EXECUCAO';
-  page.drawText(titulo, {x: PAGE_W - MARGIN - fontBold.widthOfTextAtSize(titulo,9), y: PAGE_H-25, size: 9, font: fontBold, color: TEAM_GRAY});
-  page.drawText(docNum, {x: PAGE_W - MARGIN - fontReg.widthOfTextAtSize(docNum,8), y: PAGE_H-37, size: 8, font: fontReg, color: TEAM_GRAY});
-  page.drawLine({start:{x:MARGIN,y:PAGE_H-50}, end:{x:PAGE_W-MARGIN,y:PAGE_H-50}, thickness:0.8, color: TEAM_BLUE});
-  const footTxt = 'TEAM Industrial Services - Av. N. S. do Bom Sucesso, 3344 - Pindamonhangaba/SP - +55 12 3645-9104';
-  page.drawLine({start:{x:MARGIN,y:35}, end:{x:PAGE_W-MARGIN,y:35}, thickness:0.5, color: TEAM_BLUE});
-  page.drawText(footTxt, {x: MARGIN, y: 22, size:7, font: fontReg, color: TEAM_GRAY});
-  page.drawText(docNum, {x: PAGE_W - MARGIN - fontReg.widthOfTextAtSize(docNum,7), y: 22, size:7, font: fontReg, color: TEAM_GRAY});
+  const ORANGE = rgb(0.867, 0.451, 0.125);
+  const HDR_H  = 58;
+  const HDR_BOT = PAGE_H - HDR_H;
+
+  // Logo — scaled to fit header height, capped at 90pt wide
+  const maxLH = HDR_H - 10, maxLW = 90;
+  const sc = Math.min(maxLW / logoPng.width, maxLH / logoPng.height);
+  const lw = logoPng.width * sc, lh = logoPng.height * sc;
+  page.drawImage(logoPng, {x:MARGIN, y:HDR_BOT + (HDR_H - lh)/2, width:lw, height:lh});
+
+  // Vertical orange separator after logo
+  const sepX = MARGIN + lw + 8;
+  page.drawLine({start:{x:sepX, y:HDR_BOT+3}, end:{x:sepX, y:PAGE_H-4}, thickness:0.5, color:ORANGE});
+
+  // Right text section: title + doc number centered
+  const txtX = sepX + 10;
+  const txtW = PAGE_W - MARGIN - txtX;
+  const t1 = 'RELATORIO FINAL DE EXECUCAO';
+  page.drawText(t1, {
+    x: txtX + (txtW - fontBold.widthOfTextAtSize(t1, 11)) / 2,
+    y: PAGE_H - 22, size:11, font:fontBold, color:TEAM_GRAY
+  });
+  const dnW = fontBold.widthOfTextAtSize(docNum, 10);
+  const dnX = txtX + (txtW - dnW) / 2;
+  page.drawText(docNum, {x:dnX, y:PAGE_H - 42, size:10, font:fontBold, color:TEAM_GRAY});
+  page.drawLine({start:{x:dnX-6,     y:HDR_BOT+3}, end:{x:dnX-6,     y:HDR_BOT+16}, thickness:0.7, color:TEAM_GRAY});
+  page.drawLine({start:{x:dnX+dnW+6, y:HDR_BOT+3}, end:{x:dnX+dnW+6, y:HDR_BOT+16}, thickness:0.7, color:TEAM_GRAY});
+
+  // Orange horizontal bottom line
+  page.drawLine({start:{x:MARGIN, y:HDR_BOT}, end:{x:PAGE_W-MARGIN, y:HDR_BOT}, thickness:0.8, color:ORANGE});
+
+  // ——— FOOTER ———
+  const FT_Y1 = 33;
+  const FT_Y2 = 21;
+
+  // Thin gray line above footer
+  page.drawLine({start:{x:MARGIN, y:FT_Y1+13}, end:{x:PAGE_W-MARGIN, y:FT_Y1+13}, thickness:0.4, color:TEAM_GRAY});
+
+  // Line 1: "TEAM Industrial Services" bold + address
+  const ftBold = 'TEAM Industrial Services';
+  const ftAddr = ' Avenida Nossa Senhora do Bom Sucsso, 3344 - Alto do Cardoso - Pindamonhangaba/SP, Brazil 12420-010';
+  page.drawText(ftBold, {x:MARGIN, y:FT_Y1, size:7, font:fontBold, color:BLACK});
+  page.drawText(ftAddr, {x:MARGIN + fontBold.widthOfTextAtSize(ftBold, 7), y:FT_Y1, size:7, font:fontReg, color:BLACK});
+
+  // Line 2 left: phone | email | www
+  const ft2a = '+55 12 3645-9104|anderson.andrade@TeamInc.com|';
+  const ft2www = 'www.TeamInc.com';
+  page.drawText(ft2a,   {x:MARGIN, y:FT_Y2, size:7, font:fontReg, color:BLACK});
+  page.drawText(ft2www, {x:MARGIN + fontReg.widthOfTextAtSize(ft2a, 7), y:FT_Y2, size:7, font:fontBold, color:TEAM_BLUE});
+
+  // Line 2 right: doc number with border marks
+  const dn2W = fontReg.widthOfTextAtSize(docNum, 7);
+  const dn2X = PAGE_W - MARGIN - dn2W;
+  page.drawText(docNum, {x:dn2X, y:FT_Y2, size:7, font:fontReg, color:TEAM_GRAY});
+  page.drawLine({start:{x:dn2X-5,        y:FT_Y2-2}, end:{x:dn2X-5,        y:FT_Y2+9}, thickness:0.5, color:TEAM_GRAY});
+  page.drawLine({start:{x:PAGE_W-MARGIN+2, y:FT_Y2-2}, end:{x:PAGE_W-MARGIN+2, y:FT_Y2+9}, thickness:0.5, color:TEAM_GRAY});
 }
 
 async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, sfImg, hdrImg, strip = []){
