@@ -293,10 +293,10 @@
       <h4>Referencias</h4>
       <div class="grid grid-3">
         <div class="field"><label># CONTRATO</label><input type="text" id="cgContrato" placeholder="5900.0124756.23.2"></div>
-        <div class="field"><label># PO (SS)</label><input type="text" id="cgPO" placeholder="SS-48/2026"></div>
-        <div class="field"><label># TEAM</label><input type="text" id="cgTeam" placeholder="8104-23-0048"></div>
+        <div class="field"><label>Ref #</label><input type="text" id="cgPO" placeholder="SS-48/2026"></div>
+        <div class="field"><label>Job #</label><input type="text" id="cgTeam" placeholder="8104-23-0048"></div>
         <div class="field"><label># Plaqueta</label><input type="text" id="cgPlaqueta" placeholder="3535" oninput="updateCertifPreview()"><small id="cgCertifPreview" style="color:var(--team-blue);font-weight:600;display:block;margin-top:4px"></small></div>
-        <div class="field"><label># Serial</label><input type="text" id="cgSerial" placeholder="23004825226"></div>
+        <div class="field"><label>Lot No.</label><input type="text" id="cgSerial" placeholder="23004825226"></div>
         <div class="field"><label>PDA / Vencimento</label><input type="text" id="cgPDA" value="25-0206232" placeholder="25-0206232 - venc. 24/04/2030"></div>
       </div>
     </div>
@@ -317,10 +317,9 @@
         <div class="field"><label>Garantia contratual (anos)</label><input type="text" id="cgGarantia" value="5"></div>
       </div>
       <hr class="divider">
-      <div style="margin-bottom:8px">
-        <strong style="font-size:13px;color:var(--team-gray)">Enquadramento ABS:</strong>
-        <label class="checkbox-inline"><input type="radio" name="cgAbs" value="SIM" checked> SIM</label>
-        <label class="checkbox-inline"><input type="radio" name="cgAbs" value="NAO"> NAO</label>
+      <div class="field" style="margin-bottom:8px">
+        <label>Enquadramento na Certificadora ABS</label>
+        <input type="text" id="cgAbsText" placeholder="Ex.: ASTM 9.8.2 / ISO 24817 Cat C">
       </div>
       <div>
         <strong style="font-size:13px;color:var(--team-gray)">Aplicacao de PFP:</strong>

@@ -21,6 +21,7 @@ const MODEL_ASSETS = [
   BASE + 'Model/assets-pda.json',
   BASE + 'Model/assets-tecnicos.json',
   BASE + 'Model/assets-idcards.json',
+  BASE + 'Model/assets-cover.json',
 ];
 
 // Install: cacheia assets principais imediatamente
