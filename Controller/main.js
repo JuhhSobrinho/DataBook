@@ -752,7 +752,7 @@ async function montarDatabook(){
     getAsset('logo'), getAsset('procedimentos'), getAsset('fichas'),
     getAsset('pda'), getAsset('tecnicos'), getAsset('idcards'), getAsset('cover')
   ]);
-  const logoTeamPng = await pdf.embedPng(b64ToBytes(logo));
+  const logoTeamPng = await pdf.embedJpg(b64ToBytes(logo));
   let bgImg = null, sfImg = null, hdrImg = null, strip = [];
   try {
     if(coverAssets && coverAssets.background)  bgImg = await pdf.embedJpg(b64ToBytes(coverAssets.background));
