@@ -319,7 +319,7 @@
       <hr class="divider">
       <div class="field" style="margin-bottom:8px">
         <label>Enquadramento na Certificadora ABS</label>
-        <input type="text" id="cgAbsText" value="ISO 24817:2027" placeholder="Ex.: ASTM 9.8.2 / ISO 24817 Cat C">
+        <input type="text" id="cgAbsText" value="SIM" placeholder="Ex.: ASTM 9.8.2 / ISO 24817 Cat C">
       </div>
       <div>
         <strong style="font-size:13px;color:var(--team-gray)">Aplicacao de PFP:</strong>
@@ -443,9 +443,12 @@
             <button type="button" class="btn btn-ok" onclick="aplicarCorrecoes()">&#10003; Aplicar</button>
             <button type="button" class="btn btn-outline" onclick="sairEdicao()">&#x2715; Cancelar</button>
           </div>
-          <div class="edit-stage" id="editStage">
-            <div id="editCanvasWrap" class="edit-canvas-wrap" onclick="editCanvasClick(event)">
-              <canvas id="editCanvas"></canvas>
+          <div class="edit-body">
+            <div id="editThumbSidebar" class="edit-thumb-sidebar"></div>
+            <div class="edit-stage" id="editStage">
+              <div id="editCanvasWrap" class="edit-canvas-wrap" onclick="editCanvasClick(event)">
+                <canvas id="editCanvas"></canvas>
+              </div>
             </div>
           </div>
         </div>

@@ -506,6 +506,41 @@ async function entrarModoEdicao(){
   // Atualiza controles
   _atualizarNavEdicao();
   await renderEditPage(_editCurrentPage);
+  _gerarEditThumbs();
+}
+
+async function _gerarEditThumbs(){
+  const sidebar = $('editThumbSidebar');
+  if(!sidebar || !_editPdfJsDoc) return;
+  sidebar.innerHTML = '';
+  const total = _editPdfJsDoc.numPages;
+  for(let i = 1; i <= total; i++){
+    const pg = await _editPdfJsDoc.getPage(i);
+    const vp = pg.getViewport({scale: 0.18});
+    const c  = document.createElement('canvas');
+    c.width  = vp.width;
+    c.height = vp.height;
+    await pg.render({canvasContext: c.getContext('2d'), viewport: vp}).promise;
+    const lbl  = document.createElement('span');
+    lbl.textContent = 'Pág. ' + i;
+    const item = document.createElement('div');
+    item.className   = 'edit-thumb-item' + (i === _editCurrentPage ? ' active' : '');
+    item.dataset.page = i;
+    item.appendChild(c);
+    item.appendChild(lbl);
+    item.addEventListener('click', () => renderEditPage(i));
+    sidebar.appendChild(item);
+  }
+}
+
+function _atualizarEditThumbAtivo(num){
+  const sidebar = $('editThumbSidebar');
+  if(!sidebar) return;
+  sidebar.querySelectorAll('.edit-thumb-item').forEach(it => {
+    const active = parseInt(it.dataset.page) === num;
+    it.classList.toggle('active', active);
+    if(active) it.scrollIntoView({block: 'nearest'});
+  });
 }
 
 function setEditTool(tool){
@@ -548,6 +583,7 @@ async function renderEditPage(num){
   if(!_editPdfJsDoc) return;
   _editCurrentPage = num;
   _atualizarNavEdicao();
+  _atualizarEditThumbAtivo(num);
 
   const page = await _editPdfJsDoc.getPage(num);
   const vp   = page.getViewport({scale: _editScale});
@@ -692,6 +728,12 @@ async function aplicarCorrecoes(){
     pdfPage.drawRectangle({
       x: pdfX, y: pdfY, width: pdfW, height: boxH,
       color: rgb(1,1,1), opacity: 1,
+    });
+    // Borda verde discreta para indicar campo editado
+    pdfPage.drawRectangle({
+      x: pdfX, y: pdfY, width: pdfW, height: boxH,
+      borderColor: rgb(0.086, 0.639, 0.290),
+      borderWidth: 1,
     });
 
     // Converte cor hex → rgb
@@ -1174,7 +1216,8 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
     pg.drawRectangle({x:MARGIN, y:HY, width:PAGE_W-2*MARGIN, height:HH, borderColor:BLACK, borderWidth:0.8, color:rgb(1,1,1)});
     pg.drawLine({start:{x:midX,y:HY}, end:{x:midX,y:HY+HH}, thickness:0.8, color:BLACK});
     pg.drawLine({start:{x:rightX,y:HY}, end:{x:rightX,y:HY+HH}, thickness:0.8, color:BLACK});
-    const lw=105, lh=Math.round(105*0.103);
+    const lsc = Math.min((logoColW-10)/logoTeamPng.width, (HH-10)/logoTeamPng.height);
+    const lw = logoTeamPng.width*lsc, lh = logoTeamPng.height*lsc;
     pg.drawImage(logoTeamPng, {x:MARGIN+(logoColW-lw)/2, y:HY+(HH-lh)/2, width:lw, height:lh});
     const ct='Formulario do Sistema de Qualidade Filial';
     pg.drawText(ct, {x:midX+(rightX-midX-fontBold.widthOfTextAtSize(ct,9))/2, y:HY+(HH-9)/2, size:9, font:fontBold, color:TEAM_GRAY});
@@ -1237,7 +1280,18 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   field(page, 'Quant.:',     $('cgQuant').value||'', LX+2*cw3+4,  y, REnd);
   y -= 21;
 
-  field(page, 'Descricao:', $('cgDescricao').value, LX, y, REnd);
+  const descLabel = 'Descricao:';
+  const descLbW = fontBold.widthOfTextAtSize(descLabel, 9);
+  page.drawText(descLabel, {x:LX, y, size:9, font:fontBold, color:BLACK});
+  const descVx = LX + descLbW + 4;
+  const descLines = quebrarTexto($('cgDescricao').value||'', fontReg, 9, REnd-descVx).slice(0,2);
+  if(descLines[0]) page.drawText(descLines[0], {x:descVx, y, size:9, font:fontReg, color:BLACK});
+  page.drawLine({start:{x:descVx, y:y-2}, end:{x:REnd, y:y-2}, thickness:0.4, color:BLACK});
+  if(descLines[1]){
+    y -= 14;
+    page.drawText(descLines[1], {x:descVx, y, size:9, font:fontReg, color:BLACK});
+    page.drawLine({start:{x:descVx, y:y-2}, end:{x:REnd, y:y-2}, thickness:0.4, color:BLACK});
+  }
   y -= 22;
 
   const certPar = 'Certificamos que o servico/material e/ou pecas fornecidos conforme o pedido de compra estao de acordo com os termos e especificacoes nele contidos.';
@@ -1328,6 +1382,19 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   }
   await desenhaFoto2(STATE.fotoAntes,  STATE.fotoAntesType,  tblX);
   await desenhaFoto2(STATE.fotoDepois, STATE.fotoDepoisType, tblX+halfW);
+
+  // Assinatura image — drawn above the signature line
+  if(STATE.assinatura){
+    try{
+      const sigImg = STATE.assinaturaType && STATE.assinaturaType.includes('png')
+        ? await pdf.embedPng(new Uint8Array(STATE.assinatura))
+        : await pdf.embedJpg(new Uint8Array(STATE.assinatura));
+      const sigMaxW = 242, sigMaxH = 45;
+      const sc = Math.min(sigMaxW/sigImg.width, sigMaxH/sigImg.height);
+      const sw = sigImg.width*sc, sh = sigImg.height*sc;
+      page2.drawImage(sigImg, {x:MARGIN+68+(sigMaxW-sw)/2, y:117, width:sw, height:sh});
+    }catch(e){ console.error('assinatura cert:', e); }
+  }
 
   let sy = 115;
   page2.drawText('Assinatura: ', {x:MARGIN, y:sy, size:9, font:fontReg, color:BLACK});

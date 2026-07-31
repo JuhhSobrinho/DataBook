@@ -654,6 +654,48 @@ main {
 .edit-tool-btn:hover { background: var(--bg) }
 .edit-tool-btn.active { background: var(--team-blue); border-color: var(--team-blue); color: #fff }
 
+.edit-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0
+}
+.edit-thumb-sidebar {
+    width: 110px;
+    min-width: 110px;
+    overflow-y: auto;
+    background: #1a1f2e;
+    border-right: 1px solid #2d3748;
+    padding: 6px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px
+}
+.edit-thumb-item {
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    padding: 4px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 10px;
+    transition: border-color .15s
+}
+.edit-thumb-item canvas {
+    width: 100%;
+    display: block;
+    border-radius: 2px
+}
+.edit-thumb-item span {
+    display: block;
+    margin-top: 3px
+}
+.edit-thumb-item:hover { border-color: #475569 }
+.edit-thumb-item.active {
+    border-color: #3b82f6;
+    background: rgba(59,130,246,.12);
+    color: #60a5fa
+}
 .edit-stage {
     flex: 1;
     overflow: auto;
@@ -677,7 +719,7 @@ main {
 .corr-box {
     position: absolute;
     background: #fff;
-    border: 1.5px solid #4ade80;
+    border: 2px solid #16a34a;
     border-radius: 3px;
     min-width: 20px;
     min-height: 10px;
