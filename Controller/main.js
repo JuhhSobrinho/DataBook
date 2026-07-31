@@ -1182,9 +1182,9 @@ async function desenhaIndice(pdf, fontReg, fontBold, logoTeamPng, docNum){
   ];
   let y = PAGE_H - 175;
   for(const [n, lbl] of itens){
-    page.drawText(n,   {x:MARGIN+30, y, size:13, font:fontBold, color:TEAM_BLUE});
-    page.drawText(lbl, {x:MARGIN+65, y, size:13, font:fontBold, color:TEAM_BLUE});
-    y -= 32;
+    page.drawText(n,   {x:MARGIN+30, y, size:13, font:fontBold, color:BLACK});
+    page.drawText(lbl, {x:MARGIN+65, y, size:13, font:fontBold, color:BLACK});
+    y -= 22;
   }
 }
 
