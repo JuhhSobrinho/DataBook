@@ -1383,22 +1383,31 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   await desenhaFoto2(STATE.fotoAntes,  STATE.fotoAntesType,  tblX);
   await desenhaFoto2(STATE.fotoDepois, STATE.fotoDepoisType, tblX+halfW);
 
-  // Assinatura image — drawn above the signature line
+  const gerenteNome = ($('cgGerente')||{}).value || '';
+
+  // Layout inline: "Assinatura: [imagem] - Nome"
+  let sy = 115;
+  const preTxt = 'Assinatura: ';
+  const preW   = fontReg.widthOfTextAtSize(preTxt, 9);
+  page2.drawText(preTxt, {x:MARGIN, y:sy, size:9, font:fontReg, color:BLACK});
+
+  let curX = MARGIN + preW;
   if(STATE.assinatura){
     try{
       const sigImg = STATE.assinaturaType && STATE.assinaturaType.includes('png')
         ? await pdf.embedPng(new Uint8Array(STATE.assinatura))
         : await pdf.embedJpg(new Uint8Array(STATE.assinatura));
-      const sigMaxW = 242, sigMaxH = 45;
+      const sigMaxW = 110, sigMaxH = 22;
       const sc = Math.min(sigMaxW/sigImg.width, sigMaxH/sigImg.height);
       const sw = sigImg.width*sc, sh = sigImg.height*sc;
-      page2.drawImage(sigImg, {x:MARGIN+68+(sigMaxW-sw)/2, y:117, width:sw, height:sh});
+      page2.drawImage(sigImg, {x:curX, y:sy-2, width:sw, height:sh});
+      curX += sw + 5;
     }catch(e){ console.error('assinatura cert:', e); }
   }
-
-  let sy = 115;
-  page2.drawText('Assinatura: ', {x:MARGIN, y:sy, size:9, font:fontReg, color:BLACK});
-  page2.drawLine({start:{x:MARGIN+68, y:sy-2}, end:{x:MARGIN+310, y:sy-2}, thickness:0.5, color:BLACK});
+  if(gerenteNome.trim()){
+    page2.drawText('- ' + gerenteNome.trim(), {x:curX, y:sy, size:9, font:fontBold, color:BLACK});
+  }
+  page2.drawLine({start:{x:MARGIN, y:sy-3}, end:{x:MARGIN+310, y:sy-3}, thickness:0.5, color:BLACK});
   sy -= 24;
   page2.drawText('Cargo: ', {x:MARGIN, y:sy, size:9, font:fontReg, color:BLACK});
   page2.drawLine({start:{x:MARGIN+44, y:sy-2}, end:{x:MARGIN+310, y:sy-2}, thickness:0.5, color:BLACK});
