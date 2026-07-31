@@ -301,16 +301,16 @@
       </div>
     </div>
     <div class="cert-section">
-      <h4>Descricao do Servico</h4>
-      <div class="field"><textarea id="cgDescricao" placeholder="Preenchido automaticamente pela TAG e fichas tecnicas selecionadas"></textarea></div>
+      <h4>Descrição do Serviço</h4>
+      <div class="field"><textarea id="cgDescricao" placeholder="Preenchido automaticamente pela TAG e fichas técnicas selecionadas"></textarea></div>
     </div>
     <div class="cert-section">
-      <h4>Dados Tecnicos do Reparo</h4>
+      <h4>Dados Técnicos do Reparo</h4>
       <div class="grid grid-2">
         <div class="field"><label>TAG do equipamento</label><input type="text" id="cgTag" placeholder='2"-P-E9-070'></div>
-        <div class="field"><label>Normas aplicaveis</label><input type="text" id="cgNormas" value="ISO 24817:2017"></div>
-        <div class="field"><label>Pressao de projeto </label><input type="text" id="cgPProj" placeholder="9600 (BAR ou KPA)"></div>
-        <div class="field"><label>Pressao de operacao </label><input type="text" id="cgPOper" placeholder="6575 (BAR ou KPA)"></div>
+        <div class="field"><label>Normas aplicáveis</label><input type="text" id="cgNormas" value="ISO 24817:2017"></div>
+        <div class="field"><label>Pressão de projeto </label><input type="text" id="cgPProj" placeholder="9600 (BAR ou KPA)"></div>
+        <div class="field"><label>Pressão de operação </label><input type="text" id="cgPOper" placeholder="6575 (BAR ou KPA)"></div>
         <div class="field"><label>Temperatura de projeto (C)</label><input type="text" id="cgTProj" placeholder="75"></div>
         <div class="field"><label>Temperatura de operacao (C)</label><input type="text" id="cgTOper" placeholder="40"></div>
         <div class="field"><label>Vida util do reparo (anos)</label><input type="text" id="cgVida" value="20"></div>
@@ -634,11 +634,11 @@
     }
 
     // Monta descrição
-    let desc = 'REALIZADO REFORCO ESTRUTURAL COM FIBRA DE CARBONO EM LINHA DE';
+    let desc = 'REALIZADO REFORÇO ESTRUTURAL COM FIBRA DE CARBONO EM LINHA DE';
     if (linha) desc += ' ' + linha;
-    if (jotunMarcado) desc += ' E APLICACAO DE JOTUN JOTACHAR JF750 XT COMP A+B.';
+    if (jotunMarcado) desc += ' E APLICAÇÃO DE JOTUN JOTACHAR JF750 XT COMP A+B.';
     if (pdaNum) {
-      desc += ' PDA ' + pdaNum + ' - Venc.';
+      desc += '- PDA ' + pdaNum + ' Venc.';
       if (vencimento) desc += ' ' + vencimento;
       desc += '.';
     }

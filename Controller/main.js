@@ -978,7 +978,7 @@ function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
 
   // Line 1: "TEAM Industrial Services" bold + address
   const ftBold = 'TEAM Industrial Services';
-  const ftAddr = ' Avenida Nossa Senhora do Bom Sucsso, 3344 - Alto do Cardoso - Pindamonhangaba/SP, Brazil 12420-010';
+  const ftAddr = ' Avenida Nossa Senhora do Bom Sucesso, 3344 - Alto do Cardoso - Pindamonhangaba/SP, Brazil 12420-010';
   page.drawText(ftBold, {x:MARGIN, y:FT_Y1, size:7, font:fontBold, color:BLACK});
   page.drawText(ftAddr, {x:MARGIN + fontBold.widthOfTextAtSize(ftBold, 7), y:FT_Y1, size:7, font:fontReg, color:BLACK});
 
@@ -1084,7 +1084,7 @@ async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, s
   page.drawText(lblD, {x:PAGE_W-MARGIN-wD, y:ELAB_Y, size:eSz, font:fontReg, color:BLACK});
 
   // 8 — Services text (two lines wrapped, black)
-  const svcFull = 'Furos em Carga e Bloqueio | Reparo de Vazamentos | Usinagem de Campo | Reparo de Valvulas | Controle de Emissoes | Torqueamento | Reparo com Compositos | Inspecao | Conexoes para Furo em Carga e Bloqueio | Abracadeiras de Reparo | Conexoes Especiais';
+  const svcFull = 'Furos em Carga e Bloqueio | Reparo de Vazamentos | Usinagem de Campo | Reparo de Válvulas | Controle de Emissões | Torqueamento | Reparo com Compósitos | Inspeção | Conexões para Furo em Carga e Bloqueio | Abraçadeiras de Reparo | Conexões Especiais';
   const svcLines = quebrarTexto(svcFull, fontReg, 9, PAGE_W - 2*MARGIN);
   const svcYs = [SVC1_Y, SVC2_Y];
   svcLines.slice(0, 2).forEach((l, i) => {
@@ -1097,7 +1097,7 @@ async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, s
 
   // Left: address
   const addrLines = [
-    'Team do Brasil - Servicos Industriais Ltda',
+    'Team do Brasil - Serviços Industriais Ltda',
     'Avenida Nossa Senhora do Bom Sucesso,',
     'n 3344',
     'Alto do Cardoso - Pindamonhangaba/SP',
@@ -1219,16 +1219,16 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
     const lsc = Math.min((logoColW-10)/logoTeamPng.width, (HH-10)/logoTeamPng.height);
     const lw = logoTeamPng.width*lsc, lh = logoTeamPng.height*lsc;
     pg.drawImage(logoTeamPng, {x:MARGIN+(logoColW-lw)/2, y:HY+(HH-lh)/2, width:lw, height:lh});
-    const ct='Formulario do Sistema de Qualidade Filial';
+    const ct='Formulário do Sistema de Qualidade Filial';
     pg.drawText(ct, {x:midX+(rightX-midX-fontBold.widthOfTextAtSize(ct,9))/2, y:HY+(HH-9)/2, size:9, font:fontBold, color:TEAM_GRAY});
     pg.drawText('FORM 8701-123', {x:fx, y:HY+53, size:8.5, font:fontBold, color:BLACK});
     pg.drawLine({start:{x:rightX,y:HY+43}, end:{x:PAGE_W-MARGIN,y:HY+43}, thickness:0.4, color:BLACK});
     pg.drawText('Rev: 0', {x:fx, y:HY+29, size:8.5, font:fontReg, color:BLACK});
     pg.drawLine({start:{x:rightX,y:HY+19}, end:{x:PAGE_W-MARGIN,y:HY+19}, thickness:0.4, color:BLACK});
-    pg.drawText('Pagina '+pageNum+' de 2', {x:fx, y:HY+6, size:8.5, font:fontReg, color:BLACK});
+    pg.drawText('Página '+pageNum+' de 2', {x:fx, y:HY+6, size:8.5, font:fontReg, color:BLACK});
     const titleY=HY-28;
     pg.drawRectangle({x:MARGIN, y:titleY, width:PAGE_W-2*MARGIN, height:25, borderColor:BLACK, borderWidth:0.8, color:rgb(1,1,1)});
-    const t='CERTIFICADO DE CONFORMIDADE DE REPARO COMPOSITO';
+    const t='CERTIFICADO DE CONFORMIDADE DE REPARO COMPÓSITO';
     pg.drawText(t, {x:(PAGE_W-fontBold.widthOfTextAtSize(t,12))/2, y:titleY+7, size:12, font:fontBold, color:BLACK});
     return titleY;
   }
@@ -1249,7 +1249,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
 
   let y = titleY1 - 18;
   for(const l of [
-    'Team do Brasil - Servicos Industriais Ltda',
+    'Team do Brasil - Serviços Industriais Ltda',
     'Avenida Nossa Senhora do Bom Sucesso,',
     '3344 - Modulo 5 - Alto do Cardoso -',
     'Pindamonhangaba-SP - CEP: 12422-010',
@@ -1280,7 +1280,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   field(page, 'Quant.:',     $('cgQuant').value||'', LX+2*cw3+4,  y, REnd);
   y -= 21;
 
-  const descLabel = 'Descricao:';
+  const descLabel = 'Descrição:';
   const descLbW = fontBold.widthOfTextAtSize(descLabel, 9);
   page.drawText(descLabel, {x:LX, y, size:9, font:fontBold, color:BLACK});
   const descVx = LX + descLbW + 4;
@@ -1294,14 +1294,14 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   }
   y -= 22;
 
-  const certPar = 'Certificamos que o servico/material e/ou pecas fornecidos conforme o pedido de compra estao de acordo com os termos e especificacoes nele contidos.';
+  const certPar = 'Certificamos que o serviço/material e/ou peças fornecidos conforme o pedido de compra estão de acordo com os termos e especificações nele contidos.';
   for(const l of quebrarTexto(certPar, fontBold, 9, availW)){
     page.drawText(l, {x:LX, y, size:9, font:fontBold, color:BLACK}); y -= 12;
   }
   y -= 8;
 
-  const termsLabel = 'Termos/Especificacoes: ';
-  const termsBody = 'Servico projetado e calculado em atendimento as normas regulamentadoras e as condicoes de projeto dos equipamentos, especificado pelo cliente. Atestamos para devidos fins que o servico de instalacao do projeto desenvolvido pela Team Industrial Services - Ltda, entre as condicoes de temperatura e pressao de operacao e projeto informados, se apresenta eficaz e com garantia contratual dentro do periodo de 5 anos a partir da data de instalacao. Para futuras revalidacoes e recertificacoes de reparos realizados e necessario que um tecnico Team avalie o estado do reparo no local da execucao (In loco) do mesmo.';
+  const termsLabel = 'Termos/Especificações: ';
+  const termsBody = 'Serviço projetado e calculado em atendimento às normas regulamentadoras e às condições de projeto dos equipamentos, especificado pelo cliente. Atestamos para devidos fins que o serviço de instalação do projeto desenvolvido pela Team Industrial Services - Ltda, entre as condições de temperatura e pressão de operação e projeto informados, se apresenta eficaz e com garantia contratual dentro do período de 5 anos a partir da data de instalação. Para futuras revalidações e recertificações de reparos realizados é necessário que um técnico Team avalie o estado do reparo no local da execução (In loco) do mesmo.';
   const lbW9 = fontBold.widthOfTextAtSize(termsLabel, 9);
   page.drawText(termsLabel, {x:LX, y, size:9, font:fontBold, color:BLACK});
   const firstMaxW = availW - lbW9;
@@ -1322,13 +1322,13 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
 
   const specRows = [
     ['TAG EQUIPAMENTO:',               $('cgTag').value||''],
-    ['PRESSAO DE PROJETO:',            $('cgPProj').value||''],
-    ['PRESSAO OPERACAO:',              $('cgPOper').value||''],
+    ['PRESSÃO DE PROJETO:',            $('cgPProj').value||''],
+    ['PRESSÃO OPERAÇÃO:',              $('cgPOper').value||''],
     ['TEMPERATURA DE PROJETO:',        ($('cgTProj').value ? $('cgTProj').value+' C' : '')],
-    ['TEMPERATURA DE OPERACAO:',       ($('cgTOper').value ? $('cgTOper').value+' C' : '')],
-    ['NORMAS APLICAVEIS:',             $('cgNormas').value||''],
+    ['TEMPERATURA DE OPERAÇÃO:',       ($('cgTOper').value ? $('cgTOper').value+' C' : '')],
+    ['NORMAS APLICÁVEIS:',             $('cgNormas').value||''],
     ['ENQUADRAMENTO NA CERTIFICADORA ABS:', (($('cgAbsText')||{}).value)||''],
-    ['VIDA UTIL DO REPARO PROJETADO:', $('cgVida').value||''],
+    ['VIDA ÚTIL DO REPARO PROJETADO:', $('cgVida').value||''],
   ];
   const maxSpecLW = Math.max(...specRows.map(([l]) => fontBold.widthOfTextAtSize(l, 8.5)));
   const valAreaW = 175;
@@ -1347,7 +1347,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   const naoMark = pfp!=='SIM' ? '( X )' : '(   )';
   const esp = ($('cgPfpEsp')||{}).value||'';
   const comp = ($('cgPfpComp')||{}).value||'';
-  const pfpTxt = 'FOI REALIZADO APLICACAO DE PFP:   '+simMark+' SIM   '+naoMark+' NAO        ESPESSURA: '+esp+'        COMP.: '+comp;
+  const pfpTxt = 'FOI REALIZADO APLICAÇÃO DE PFP:   '+simMark+' SIM   '+naoMark+' NÃO        ESPESSURA: '+esp+'        COMP.: '+comp;
   page.drawText(pfpTxt, {x:(PAGE_W-fontReg.widthOfTextAtSize(pfpTxt,8.5))/2, y, size:8.5, font:fontReg, color:BLACK});
 
   // ---- PAGINA 2 ----
@@ -1366,7 +1366,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   const lblY = tblTop - tblH + lblRowH;
   page2.drawLine({start:{x:tblX, y:lblY}, end:{x:tblX+tblW, y:lblY}, thickness:0.8, color:BLACK});
 
-  const lbl1='Antes da Execucao', lbl2='Depois da Execucao';
+  const lbl1='Antes da Execução', lbl2='Depois da Execução';
   page2.drawText(lbl1, {x:tblX+(halfW-fontReg.widthOfTextAtSize(lbl1,10))/2, y:tblTop-tblH+7, size:10, font:fontReg, color:BLACK});
   page2.drawText(lbl2, {x:tblX+halfW+(halfW-fontReg.widthOfTextAtSize(lbl2,10))/2, y:tblTop-tblH+7, size:10, font:fontReg, color:BLACK});
 
@@ -1423,4 +1423,4 @@ function quebrarTexto(txt, font, size, maxW){
   return linhas;
 }
 
-adicionarRevisao('Rev0', 'Emissao inicial', '');
+adicionarRevisao('Rev0', 'Emissão inicial', '');
