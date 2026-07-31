@@ -768,13 +768,13 @@ async function montarDatabook(){
   await desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, sfImg, hdrImg, strip);
   await desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, tag);
   await desenhaIndice(pdf, fontReg, fontBold, logoTeamPng, docNum);
-  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '1', 'SOLICITACAO DE SERVICO');
+  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '1', 'SOLICITAÇÃO DE SERVIÇO');
   if(STATE.uploads.ss) await anexarPdf(pdf, STATE.uploads.ss);
 
-  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '2', 'RELATORIO DIARIO DE OPERACOES');
+  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '2', 'RELATÓRIO DIÁRIO DE OPERAÇÕES');
   if(STATE.uploads.rdo) await anexarPdf(pdf, STATE.uploads.rdo);
 
-  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '3', 'RELATORIO DE EXECUCAO');
+  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '3', 'RELATÓRIO DE EXECUÇÃO');
   if(STATE.uploads.rel) await anexarPdf(pdf, STATE.uploads.rel);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '4', 'PROJETO');
@@ -784,7 +784,7 @@ async function montarDatabook(){
   const proc = document.querySelector('input[name=proc]:checked');
   if(proc) await anexarPdf(pdf, b64ToBytes(procedimentos[proc.value]));
 
-  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '6', 'FICHA TECNICA');
+  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '6', 'FICHA TÉCNICA');
   for(const c of document.querySelectorAll('input[name=ficha]:checked')){
     await anexarPdf(pdf, b64ToBytes(fichas[c.value]));
   }
@@ -794,13 +794,13 @@ async function montarDatabook(){
     await anexarPdf(pdf, b64ToBytes(pda[c.value]));
   }
 
-  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '8', 'ANALISE DE RISCO DO REPARO');
+  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '8', 'ANÁLISE DE RISCO DO REPARO');
   if(STATE.uploads.arpt) await anexarPdf(pdf, STATE.uploads.arpt);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '9', 'CERTIFICADO DE GARANTIA');
   await desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng);
 
-  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '10', 'CERTIFICADOS DE QUALIFICACAO DOS TECNICOS');
+  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '10', 'CERTIFICADOS DE QUALIFICAÇÃO DOS TÉCNICOS');
   for(const cb of document.querySelectorAll('.tec-check:checked')){
     const nome = cb.dataset.nome;
     const sel = document.querySelector('.tec-cert[data-nome="'+cssEscape(nome)+'"]');
@@ -852,18 +852,10 @@ function resolverElaborador(elab) {
 function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
   const autor = resolverElaborador(elab);
   const page  = pdf.addPage([PAGE_W, PAGE_H]);
+  desenhaCabecalhoRodape(page, fontReg, fontBold, logoTeamPng, docNum);
 
-  // ---- HEADER ----
-  const lw = 150, lh = Math.round(150 * 0.103);
-  page.drawImage(logoTeamPng, {x: MARGIN, y: PAGE_H - 48, width: lw, height: lh});
-  page.drawLine({start:{x: MARGIN+lw+18, y: PAGE_H-14}, end:{x: MARGIN+lw+18, y: PAGE_H-62}, thickness:1.5, color:TEAM_BLUE});
-  const tx = MARGIN + lw + 30;
-  page.drawText('RELATORIO FINAL DE EXECUCAO', {x:tx, y:PAGE_H-30, size:14, font:fontBold, color:TEAM_GRAY});
-  page.drawText(docNum,                         {x:tx, y:PAGE_H-48, size:10, font:fontBold, color:TEAM_BLUE});
-  page.drawLine({start:{x:MARGIN, y:PAGE_H-66}, end:{x:PAGE_W-MARGIN, y:PAGE_H-66}, thickness:1.8, color:TEAM_BLUE});
-
-  // ---- SEÇÃO DE ENCERRAMENTO (próxima ao rodapé) ----
-  let y = 200;
+  // ---- SEÇÃO DE ENCERRAMENTO ----
+  let y = 280;
   page.drawText('Atenciosamente,', {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
   y -= 28;
   page.drawText(autor.nome,  {x:MARGIN, y, size:13, font:fontBold, color:TEAM_BLUE});
@@ -876,12 +868,13 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
     page.drawText(autor.linha, {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
     y -= 14;
   }
-  y -= 14;
 
-  // Logo TEAM
-  const cLw = 180, cLh = Math.round(180 * 0.103);
+  // Logo TEAM — mesmo tamanho do header
+  const cSc = Math.min(90 / logoTeamPng.width, 48 / logoTeamPng.height);
+  const cLw = logoTeamPng.width * cSc, cLh = logoTeamPng.height * cSc;
+  y -= (cLh + 1);
   page.drawImage(logoTeamPng, {x:MARGIN, y, width:cLw, height:cLh});
-  y -= 22;
+  y -= 10;
 
   // Dados de contato do elaborador
   const linhasContato = [
@@ -895,20 +888,6 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
     y -= 13;
   }
 
-  // ---- RODAPÉ (fixo — não varia por elaborador) ----
-  // Linha 1: endereço (sem docNum para evitar sobreposição)
-  // Linha 2: telefone|email|www  +  docNum alinhado à direita
-  page.drawLine({start:{x:MARGIN, y:38}, end:{x:PAGE_W-MARGIN, y:38}, thickness:0.8, color:TEAM_BLUE});
-  const boldLabel = 'TEAM Industrial Services';
-  page.drawText(boldLabel, {x:MARGIN, y:26, size:7, font:fontBold, color:TEAM_GRAY});
-  const bLw = fontBold.widthOfTextAtSize(boldLabel, 7);
-  page.drawText(' Avenida Nossa Senhora do Bom Sucesso, 3344 - Alto do Cardoso - Pindamonhangaba/SP, Brazil 12420-010', {x:MARGIN+bLw, y:26, size:7, font:fontReg, color:TEAM_GRAY});
-
-  const foot2 = '+55 12 3645-9104|anderson.andrade@TeamInc.com|';
-  const wwwLabel = 'www.TeamInc.com';
-  page.drawText(foot2,    {x:MARGIN, y:13, size:7, font:fontReg,  color:TEAM_GRAY});
-  page.drawText(wwwLabel, {x:MARGIN+fontReg.widthOfTextAtSize(foot2,7), y:13, size:7, font:fontBold, color:TEAM_GRAY});
-  page.drawText(docNum,   {x:PAGE_W-MARGIN-fontReg.widthOfTextAtSize(docNum,7), y:13, size:7, font:fontReg, color:TEAM_GRAY});
 }
 
 async function anexarPdf(targetPdf, source){
@@ -931,14 +910,13 @@ function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
   const lw = logoPng.width * sc, lh = logoPng.height * sc;
   page.drawImage(logoPng, {x:MARGIN, y:HDR_BOT + (HDR_H - lh)/2, width:lw, height:lh});
 
-  // Vertical orange separator after logo
+  // Position right text section after logo (no vertical separator line)
   const sepX = MARGIN + lw + 8;
-  page.drawLine({start:{x:sepX, y:HDR_BOT+3}, end:{x:sepX, y:PAGE_H-4}, thickness:0.5, color:ORANGE});
 
   // Right text section: title + doc number centered
   const txtX = sepX + 10;
   const txtW = PAGE_W - MARGIN - txtX;
-  const t1 = 'RELATORIO FINAL DE EXECUCAO';
+  const t1 = 'RELATÓRIO FINAL DE EXECUÇÃO';
   page.drawText(t1, {
     x: txtX + (txtW - fontBold.widthOfTextAtSize(t1, 11)) / 2,
     y: PAGE_H - 22, size:11, font:fontBold, color:TEAM_GRAY
@@ -953,11 +931,8 @@ function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
   page.drawLine({start:{x:MARGIN, y:HDR_BOT}, end:{x:PAGE_W-MARGIN, y:HDR_BOT}, thickness:0.8, color:ORANGE});
 
   // ——— FOOTER ———
-  const FT_Y1 = 33;
-  const FT_Y2 = 21;
-
-  // Thin gray line above footer
-  page.drawLine({start:{x:MARGIN, y:FT_Y1+13}, end:{x:PAGE_W-MARGIN, y:FT_Y1+13}, thickness:0.4, color:TEAM_GRAY});
+  const FT_Y1 = 38;
+  const FT_Y2 = 26;
 
   // Line 1: "TEAM Industrial Services" bold + address
   const ftBold = 'TEAM Industrial Services';
@@ -977,19 +952,22 @@ function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
   page.drawText(docNum, {x:dn2X, y:FT_Y2, size:7, font:fontReg, color:TEAM_GRAY});
   page.drawLine({start:{x:dn2X-5,        y:FT_Y2-2}, end:{x:dn2X-5,        y:FT_Y2+9}, thickness:0.5, color:TEAM_GRAY});
   page.drawLine({start:{x:PAGE_W-MARGIN+2, y:FT_Y2-2}, end:{x:PAGE_W-MARGIN+2, y:FT_Y2+9}, thickness:0.5, color:TEAM_GRAY});
+
+  // Black footer line BELOW text, edge-to-edge
+  page.drawLine({start:{x:0, y:20}, end:{x:PAGE_W, y:20}, thickness:0.8, color:BLACK});
 }
 
 async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, sfImg, hdrImg, strip = []){
   const page = pdf.addPage([PAGE_W, PAGE_H]);
 
   // Positions (y from page bottom)
-  const HDR_BOT = 668, HDR_H = 140;        // TEAM IS header logo strip
-  const REL_Y   = 636;                      // "RELATORIO FINAL DE EXECUCAO"
-  const DOCBOX_Y = 604, DOCBOX_H = 26;     // document number border box
+  const HDR_BOT = 708, HDR_H = 140;        // TEAM IS header logo strip
+  const REL_Y   = 676;                      // "RELATÓRIO FINAL DE EXECUÇÃO"
+  const DOCBOX_Y = 644, DOCBOX_H = 26;     // document number border box
   const AC_Y    = 532;                       // "A/C:" — just above client logo white box (BG_TOP-51)
   const BG_BOT  = 215, BG_TOP = 583;       // capa.jpg background strip
   const ELAB_Y  = 200;                      // elaborado/revisado/data line
-  const SVC1_Y  = 183, SVC2_Y = 171;       // services text lines
+  const SVC1_Y  = 173, SVC2_Y = 161;       // services text lines
   const FT_TOP  = 110;                      // footer top line
 
   // doc number metrics — computed first so logo can match its width
@@ -1006,8 +984,8 @@ async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, s
     page.drawImage(hdrImg, {x:(PAGE_W-hActW)/2, y:HDR_BOT, width:hActW, height:hActH});
   }
 
-  // 2 — "RELATORIO FINAL DE EXECUCAO" bold centered (smaller than doc number)
-  const t1 = 'RELATORIO FINAL DE EXECUCAO';
+  // 2 — "RELATÓRIO FINAL DE EXECUÇÃO" bold centered (smaller than doc number)
+  const t1 = 'RELATÓRIO FINAL DE EXECUÇÃO';
   page.drawText(t1, {x:(PAGE_W-fontBold.widthOfTextAtSize(t1,14))/2, y:REL_Y, size:14, font:fontBold, color:BLACK});
 
   // 3 — Document number (larger) with thin left/right border lines
@@ -1045,13 +1023,13 @@ async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, s
   }
 
   // 6b — "A/C:" drawn on top of background, just above client logo
-  page.drawText('A/C:', {x:MARGIN, y:AC_Y, size:9, font:fontBold, color:BLACK});
+  page.drawText('A/C:', {x:MARGIN, y:AC_Y, size:9, font:fontBold, color:rgb(1,1,1)});
 
   // 7 — Elaborado / Revisado / Data line (space-between)
   const elab = $('capaElab').value.trim() || '____________________';
   const rev  = $('capaRev').value.trim()  || '____________________';
   const dt   = fmtDate($('capaData').value) || '__________';
-  const eSz  = 8.5;
+  const eSz  = 10;
   const lblE = 'ELABORADO POR: ' + elab;
   const lblR = 'REVISADO POR: '  + rev;
   const lblD = 'DATA: '          + dt;
@@ -1065,10 +1043,10 @@ async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, s
 
   // 8 — Services text (two lines wrapped, black)
   const svcFull = 'Furos em Carga e Bloqueio | Reparo de Vazamentos | Usinagem de Campo | Reparo de Valvulas | Controle de Emissoes | Torqueamento | Reparo com Compositos | Inspecao | Conexoes para Furo em Carga e Bloqueio | Abracadeiras de Reparo | Conexoes Especiais';
-  const svcLines = quebrarTexto(svcFull, fontReg, 7.5, PAGE_W - 2*MARGIN);
+  const svcLines = quebrarTexto(svcFull, fontReg, 9, PAGE_W - 2*MARGIN);
   const svcYs = [SVC1_Y, SVC2_Y];
   svcLines.slice(0, 2).forEach((l, i) => {
-    page.drawText(l, {x:(PAGE_W-fontReg.widthOfTextAtSize(l,7.5))/2, y:svcYs[i], size:7.5, font:fontReg, color:BLACK});
+    page.drawText(l, {x:(PAGE_W-fontReg.widthOfTextAtSize(l,9))/2, y:svcYs[i], size:9, font:fontReg, color:BLACK});
   });
 
   // 9 — 3-column footer: address | SafetyFirst | phone/email/website
@@ -1085,8 +1063,8 @@ async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, s
   ];
   let ay = FT_TOP - 4;
   for(const l of addrLines){
-    page.drawText(l, {x:addrX, y:ay, size:7, font:fontReg, color:BLACK});
-    ay -= 11;
+    page.drawText(l, {x:addrX, y:ay, size:8.5, font:fontReg, color:BLACK});
+    ay -= 13;
   }
 
   // Center: SafetyFirst logo
@@ -1109,10 +1087,13 @@ async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, s
   let cy = FT_TOP - 4;
   for(const [info, lbl, isEmail] of ctRows){
     const clr = isEmail ? TEAM_BLUE : BLACK;
-    if(lbl) page.drawText(lbl, {x:labelColX - fontReg.widthOfTextAtSize(lbl,7), y:cy, size:7, font:fontReg, color:BLACK});
-    page.drawText(info, {x:ctX, y:cy, size:7, font:fontReg, color:clr});
-    cy -= 11;
+    if(lbl) page.drawText(lbl, {x:labelColX - fontReg.widthOfTextAtSize(lbl,8.5), y:cy, size:8.5, font:fontReg, color:BLACK});
+    page.drawText(info, {x:ctX, y:cy, size:8.5, font:fontReg, color:clr});
+    cy -= 13;
   }
+
+  // Footer bottom line — edge-to-edge, black
+  page.drawLine({start:{x:0, y:20}, end:{x:PAGE_W, y:20}, thickness:0.8, color:BLACK});
 }
 
 async function desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, tag){
@@ -1121,8 +1102,8 @@ async function desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, ta
 
   const cy = PAGE_H / 2 + 40;
 
-  // "RELATORIO FINAL DE EXECUCAO"
-  const t1 = 'RELATORIO FINAL DE EXECUCAO';
+  // "RELATÓRIO FINAL DE EXECUÇÃO"
+  const t1 = 'RELATÓRIO FINAL DE EXECUÇÃO';
   page.drawText(t1, {x:(PAGE_W-fontBold.widthOfTextAtSize(t1,18))/2, y:cy+48, size:18, font:fontBold, color:BLACK});
 
   // Document number with thin left/right border lines
@@ -1146,16 +1127,16 @@ async function desenhaIndice(pdf, fontReg, fontBold, logoTeamPng, docNum){
   page.drawText(label, {x:(PAGE_W-fontBold.widthOfTextAtSize(label,14))/2, y:PAGE_H-130, size:14, font:fontBold, color:BLACK});
 
   const itens = [
-    ['1',  'SOLICITACAO DE SERVICO'],
-    ['2',  'RELATORIO DIARIO DE OPERACOES'],
-    ['3',  'RELATORIO DE EXECUCAO'],
+    ['1',  'SOLICITAÇÃO DE SERVIÇO'],
+    ['2',  'RELATÓRIO DIÁRIO DE OPERAÇÕES'],
+    ['3',  'RELATÓRIO DE EXECUÇÃO'],
     ['4',  'PROJETO'],
     ['5',  'PROCEDIMENTOS'],
-    ['6',  'FICHA TECNICA'],
+    ['6',  'FICHA TÉCNICA'],
     ['7',  'PDA'],
-    ['8',  'ANALISE DE RISCO DO REPARO'],
+    ['8',  'ANÁLISE DE RISCO DO REPARO'],
     ['9',  'CERTIFICADO DE GARANTIA'],
-    ['10', 'CERTIFICADOS DE QUALIFICACAO DOS TECNICOS'],
+    ['10', 'CERTIFICADOS DE QUALIFICAÇÃO DOS TÉCNICOS'],
   ];
   let y = PAGE_H - 175;
   for(const [n, lbl] of itens){
@@ -1173,7 +1154,7 @@ async function desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, num
   page.drawText(num+'  '+titulo, {x:MARGIN, y:PAGE_H-120, size:13, font:fontBold, color:TEAM_BLUE});
 
   // "PAGINA EM BRANCO" centered
-  const pb = 'PAGINA EM BRANCO';
+  const pb = 'PÁGINA EM BRANCO';
   page.drawText(pb, {x:(PAGE_W-fontBold.widthOfTextAtSize(pb,11))/2, y:PAGE_H/2, size:11, font:fontBold, color:BLACK});
 }
 
