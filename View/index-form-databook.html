@@ -356,12 +356,12 @@
       <h4>Assinatura / Responsavel</h4>
       <div class="grid grid-2">
         <div class="field"><label>Nome do Responsavel</label><input type="text" id="cgGerente" value="Henrique Biondi"></div>
-        <div class="field"><label>Cargo</label><input type="text" id="cgCargo" value="Supervisor Técnico"></div>
+        <div class="field"><label>Cargo</label><input type="text" id="cgCargo" value="Supervisor Técnico Comercial LRS"></div>
       </div>
       <div class="field" style="margin-top:12px">
         <label>Imagem da Assinatura <span style="color:var(--muted);font-weight:400">(PNG recomendado - fundo transparente)</span></label>
         <div class="upload-zone" id="assinaturaZone" onclick="document.getElementById('assinaturaFile').click()" style="max-width:340px">
-          <p id="assinaturaName">Clique para selecionar a imagem da assinatura</p>
+          <p id="assinaturaName">Assinatura (foto/rubrica) — Henrique Biondi</p>
           <input type="file" id="assinaturaFile" accept="image/png,image/jpeg" style="display:none">
         </div>
       </div>
@@ -648,6 +648,18 @@
     descEl.classList.add('campo-sincronizado');
     descEl.dispatchEvent(new Event('change'));
   }
+
+  // ── Label da zona de assinatura acompanha o nome do responsável ──────────
+  function atualizarLabelAssinatura(){
+    const zone = document.getElementById('assinaturaZone');
+    if(zone && zone.classList.contains('has-file')) return;
+    const nome = (document.getElementById('cgGerente')||{}).value || '';
+    document.getElementById('assinaturaName').textContent =
+      'Assinatura (foto/rubrica)' + (nome.trim() ? ' — ' + nome.trim() : '');
+  }
+  const gerenteEl = document.getElementById('cgGerente');
+  if(gerenteEl) gerenteEl.addEventListener('input', atualizarLabelAssinatura);
+  atualizarLabelAssinatura();
 
   // ── Elaborado por → última página (ELABORADORES em main.js) ─────────────
   // O Responsável/Assinatura do certificado é fixo: Henrique Biondi
