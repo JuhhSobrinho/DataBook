@@ -279,6 +279,20 @@ async function gerarPDF(){
     a.download = getDocNumero() + '.pdf';
     a.click();
     URL.revokeObjectURL(url);
+
+    // Certificado separado (2 páginas)
+    const plaqueta = (($('cgPlaqueta')||{}).value||'').trim();
+    const certNome = 'Certificado de Conformidade REP-' + (plaqueta || 'sem-plaqueta') + '.pdf';
+    const certBlob = await montarCertificado();
+    const certUrl  = URL.createObjectURL(certBlob);
+    setTimeout(()=>{
+      const ca = document.createElement('a');
+      ca.href = certUrl;
+      ca.download = certNome;
+      ca.click();
+      URL.revokeObjectURL(certUrl);
+    }, 800);
+
     btn.innerHTML = 'OK - PDF gerado!';
     setTimeout(()=>{btn.innerHTML = orig; btn.disabled=false;}, 2500);
   }catch(e){
@@ -784,6 +798,17 @@ async function gerarPDFDoPreview(){
   // Gera o PDF direto do preview sem precisar fechar a modal
   fecharPreview();
   await gerarPDF();
+}
+
+async function montarCertificado(){
+  const pdf      = await PDFDocument.create();
+  const fontReg  = await pdf.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const logo     = await getAsset('logo');
+  const logoTeamPng = await pdf.embedJpg(b64ToBytes(logo));
+  await desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng);
+  const bytes = await pdf.save();
+  return new Blob([bytes], {type:'application/pdf'});
 }
 
 async function montarDatabook(){
