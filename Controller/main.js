@@ -337,8 +337,9 @@ let _editTool        = 'select'; // 'select' | 'add'
 let _editPdfJsDoc    = null;
 let _editCurrentPage = 1;
 let _editScale       = 1.5;
-let _editCorrections = [];    // [{page,x,y,w,h,text,fontSize,color}]
-let _correctedBytes  = null;  // bytes com correções já aplicadas
+let _editCorrections  = [];    // [{page,x,y,w,h,text,fontSize,color}]
+let _editPageRotations= {};   // {pageNum: rotation_degrees (0/90/180/270)}
+let _correctedBytes   = null; // bytes com correções já aplicadas
 
 function toggleSidebar(){
   _sidebarHidden = !_sidebarHidden;
@@ -505,7 +506,8 @@ async function entrarModoEdicao(){
   if(!_previewBytes){ alert('Abra o preview antes de editar.'); return; }
   _editMode = true;
   _editCurrentPage = 1;
-  _editCorrections = [];
+  _editCorrections  = [];
+  _editPageRotations= {};
 
   // Começa no modo selecionar
   setEditTool('select');
@@ -529,11 +531,12 @@ async function _gerarEditThumbs(){
   sidebar.innerHTML = '';
   const total = _editPdfJsDoc.numPages;
   for(let i = 1; i <= total; i++){
-    const pg = await _editPdfJsDoc.getPage(i);
-    const vp = pg.getViewport({scale: 0.18});
-    const c  = document.createElement('canvas');
-    c.width  = vp.width;
-    c.height = vp.height;
+    const pg  = await _editPdfJsDoc.getPage(i);
+    const rot = _editPageRotations[i] || 0;
+    const vp  = pg.getViewport({scale: 0.18, rotation: rot});
+    const c   = document.createElement('canvas');
+    c.width   = vp.width;
+    c.height  = vp.height;
     await pg.render({canvasContext: c.getContext('2d'), viewport: vp}).promise;
     const lbl  = document.createElement('span');
     lbl.textContent = 'Pág. ' + i;
@@ -555,6 +558,30 @@ function _atualizarEditThumbAtivo(num){
     it.classList.toggle('active', active);
     if(active) it.scrollIntoView({block: 'nearest'});
   });
+}
+
+async function rotatePage(delta){
+  const num = _editCurrentPage;
+  _editPageRotations[num] = ((_editPageRotations[num] || 0) + delta + 360) % 360;
+  await renderEditPage(num);
+  await _atualizarThumbRotacao(num);
+}
+
+async function _atualizarThumbRotacao(num){
+  const sidebar = $('editThumbSidebar');
+  if(!sidebar || !_editPdfJsDoc) return;
+  const item = sidebar.querySelector('.edit-thumb-item[data-page="'+num+'"]');
+  if(!item) return;
+  const oldCanvas = item.querySelector('canvas');
+  if(!oldCanvas) return;
+  const pg  = await _editPdfJsDoc.getPage(num);
+  const rot = _editPageRotations[num] || 0;
+  const vp  = pg.getViewport({scale: 0.18, rotation: rot});
+  const c   = document.createElement('canvas');
+  c.width   = vp.width;
+  c.height  = vp.height;
+  await pg.render({canvasContext: c.getContext('2d'), viewport: vp}).promise;
+  item.replaceChild(c, oldCanvas);
 }
 
 function setEditTool(tool){
@@ -600,7 +627,8 @@ async function renderEditPage(num){
   _atualizarEditThumbAtivo(num);
 
   const page = await _editPdfJsDoc.getPage(num);
-  const vp   = page.getViewport({scale: _editScale});
+  const rot  = _editPageRotations[num] || 0;
+  const vp   = page.getViewport({scale: _editScale, rotation: rot});
 
   const canvas = $('editCanvas');
   const ctx    = canvas.getContext('2d');
@@ -733,10 +761,20 @@ async function aplicarCorrecoes(){
     if(!pdfPage) continue;
     const {width, height} = pdfPage.getSize();
     // Converte coordenadas: canvas Y from top → pdf-lib Y from bottom
-    const pdfX = c.x / _editScale;
-    const boxH = Math.max(20, c.h) / _editScale;
-    const pdfY = height - (c.y / _editScale) - boxH;
-    const pdfW = c.w / _editScale;
+    const rot = _editPageRotations[c.page] || 0;
+    const s   = _editScale;
+    const rw  = c.w, rh = Math.max(20, c.h);
+    let pdfX, pdfY, pdfW, pdfH;
+    if(rot === 0){
+      pdfX = c.x/s;             pdfY = height-(c.y+rh)/s;    pdfW = rw/s; pdfH = rh/s;
+    } else if(rot === 90){
+      pdfX = width-(c.y+rh)/s;  pdfY = height-(c.x+rw)/s;   pdfW = rh/s; pdfH = rw/s;
+    } else if(rot === 180){
+      pdfX = width-(c.x+rw)/s;  pdfY = c.y/s;               pdfW = rw/s; pdfH = rh/s;
+    } else {
+      pdfX = c.y/s;             pdfY = c.x/s;               pdfW = rh/s; pdfH = rw/s;
+    }
+    const boxH = pdfH;
 
     // Retângulo branco de cobertura
     pdfPage.drawRectangle({
