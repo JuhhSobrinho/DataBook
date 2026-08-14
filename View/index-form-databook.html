@@ -22,6 +22,7 @@
     <h2>Relatorio Final de Execucao - TEAM Industrial Services</h2>
   </div>
   <button id="btnTema" class="btn btn-outline" onclick="alternarTema()" title="Alternar tema">🌙</button>
+  <button id="btnResetPreview" class="btn btn-outline" onclick="resetarPreview()" title="Descartar remoções e edições salvas no preview" style="display:none">&#x21BA; Resetar</button>
   <button id="btnInstalarPWA" class="btn btn-outline" onclick="instalarPWA()" style="display:none">⬇ Instalar App</button>
   <button id="btnMiniaturas" class="btn btn-outline" onclick="toggleThumbPanel()" title="Miniaturas do databook">&#9776; Miniaturas</button>
 </header>
@@ -95,7 +96,7 @@
     <li><a href="#s7" class="nav-link">Procedimentos</a></li>
     <li><a href="#s8" class="nav-link">Fichas Tecnicas</a></li>
     <li><a href="#s9" class="nav-link">PDA</a></li>
-    <li><a href="#s10" class="nav-link">Analise de Risco</a></li>
+    <li><a href="#s10" class="nav-link">Avaliacao de Risco</a></li>
     <li><a href="#s11" class="nav-link">Cert. de Garantia</a></li>
     <li><a href="#s12" class="nav-link">Cert. dos Tecnicos</a></li>
   </ol>
@@ -178,14 +179,28 @@
   </section>
 
   <section class="step" id="s5">
-    <h3><span class="num">5</span>Relatorio de Execucao</h3>
-    <p class="hint">Relatorio tecnico do servico e documentacao fotografica.</p>
-    <label class="upload-zone" id="relZone">
-      <div class="icon">[+]</div>
-      <div class="text">Clique para anexar o PDF do Relatorio de Execucao</div>
-      <div class="filename" id="relName"></div>
-      <input type="file" id="relFile" accept="application/pdf">
-    </label>
+    <h3><span class="num">5</span>Relatorio de Execucao e Registro de Instalacao</h3>
+    <p class="hint">Relatorio tecnico do servico e documentacao fotografica. Se o Registro de Instalacao vier em arquivo separado, anexe-o ao lado.</p>
+    <div class="grid grid-2">
+      <div class="field">
+        <label>Relatorio de Execucao</label>
+        <label class="upload-zone" id="relZone">
+          <div class="icon">[+]</div>
+          <div class="text">Clique para anexar o PDF do Relatorio de Execucao</div>
+          <div class="filename" id="relName"></div>
+          <input type="file" id="relFile" accept="application/pdf">
+        </label>
+      </div>
+      <div class="field">
+        <label>RDE / Registro de Instalacao</label>
+        <label class="upload-zone" id="rdiZone">
+          <div class="icon">[+]</div>
+          <div class="text">Clique para anexar o PDF do Registro de Instalacao (se enviado em arquivo separado)</div>
+          <div class="filename" id="rdiName"></div>
+          <input type="file" id="rdiFile" accept="application/pdf">
+        </label>
+      </div>
+    </div>
   </section>
 
   <section class="step" id="s6">
@@ -243,7 +258,7 @@
       </label>
       <label class="choice">
         <input type="checkbox" name="ficha" value="Jotun-Jotachar">
-        <div class="label-info"><div class="label-main">Certificado Jotun Jotachar (Venc. 13/08/2026)</div><div class="label-sub">PPCI - Jotachar JF750</div></div>
+        <div class="label-info"><div class="label-main">Certificado Jotun Jotachar (Venc. 15/08/2026)</div><div class="label-sub">PPCI - Jotachar JF750</div></div>
         <span class="badge badge-gray">Embutido</span>
       </label>
     </div>
@@ -267,8 +282,8 @@
   </section>
 
   <section class="step" id="s10">
-    <h3><span class="num">10</span>Analise de Risco do Reparo (ARPT)</h3>
-    <p class="hint">Anexe o PDF da Analise de Risco / FORM 8701-092.</p>
+    <h3><span class="num">10</span>Avaliacao de Risco do Reparo (ARPT)</h3>
+    <p class="hint">Anexe o PDF da Avaliacao de Risco / FORM 8701-092.</p>
     <label class="upload-zone" id="arptZone">
       <div class="icon">[+]</div>
       <div class="text">Clique para anexar o PDF da ARPT</div>

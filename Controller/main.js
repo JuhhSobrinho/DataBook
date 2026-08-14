@@ -54,6 +54,7 @@ function setupUpload(inputId, zoneId, nameId, stateKey){
 setupUpload('ssFile','ssZone','ssName','ss');
 setupUpload('rdoFile','rdoZone','rdoName','rdo');
 setupUpload('relFile','relZone','relName','rel');
+setupUpload('rdiFile','rdiZone','rdiName','rdi');
 setupUpload('memFile','memZone','memName','mem');
 setupUpload('arptFile','arptZone','arptName','arpt');
 
@@ -220,7 +221,7 @@ function updateStatus(){
   $('statusCount').textContent = count;
   let pages = 3;
   for(let i=1;i<=10;i++) pages += 1;
-  for(const k of ['ss','rdo','rel','mem','arpt']) if(STATE.uploads[k]) pages += 2;
+  for(const k of ['ss','rdo','rel','rdi','mem','arpt']) if(STATE.uploads[k]) pages += 2;
   if(proc) pages += 21;
   pages += fichas.length * 4;
   pages += pdas.length * 3;
@@ -238,7 +239,7 @@ document.querySelectorAll('.nav-link').forEach(a=>{
 });
 updateStatus();
 
-const { PDFDocument, StandardFonts, rgb } = PDFLib;
+const { PDFDocument, StandardFonts, rgb, degrees } = PDFLib;
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 const MARGIN = 50;
@@ -325,9 +326,10 @@ async function _aplicarDrawerMask(bytes) {
   return await dst.save();
 }
 
-let _previewBytes    = null;
-let _previewUrl      = null;
-let _keptPageIndices = null;  // índices das páginas mantidas após remoção DENTRO do preview
+let _previewBytes          = null;
+let _previewUrl            = null;
+let _persistedPreviewBytes = null; // estado do preview persistido entre aberturas (remoções + edições)
+let _keptPageIndices       = null; // índices das páginas mantidas após remoção DENTRO do preview
 let _thumbPanelOpen  = false; // estado do painel de miniaturas
 let _drawerPageMask  = null;  // null = todas as páginas; array de bool = seleção por página
 let _sidebarHidden   = false; // estado da sidebar de guias
@@ -340,6 +342,27 @@ let _editScale       = 1.5;
 let _editCorrections  = [];    // [{page,x,y,w,h,text,fontSize,color}]
 let _editPageRotations= {};   // {pageNum: rotation_degrees (0/90/180/270)}
 let _correctedBytes   = null; // bytes com correções já aplicadas
+
+// Invalida o preview salvo quando o usuário altera dados do formulário ou sobe novos arquivos.
+// Ignora eventos originados dentro do previewModal (interações de edição/remoção de páginas).
+function _invalidarPreviewSalvo(){
+  if(!_persistedPreviewBytes && !_correctedBytes && !_keptPageIndices) return;
+  _persistedPreviewBytes = null;
+  _keptPageIndices       = null;
+  _correctedBytes        = null;
+  _editCorrections       = [];
+  _editPageRotations     = {};
+  _atualizarBtnReset();
+}
+
+document.addEventListener('change', function(e){
+  if(e.target.closest('#previewModal') || e.target.closest('header')) return;
+  _invalidarPreviewSalvo();
+});
+document.addEventListener('input', function(e){
+  if(e.target.closest('#previewModal') || e.target.closest('header')) return;
+  _invalidarPreviewSalvo();
+});
 
 function toggleSidebar(){
   _sidebarHidden = !_sidebarHidden;
@@ -413,22 +436,30 @@ async function renderizarThumbnails(){
 }
 
 async function abrirPreview(){
-  _keptPageIndices = null; // nova sessão de preview — descarta estado anterior
-  _correctedBytes  = null; // descarta correções de sobreposição anteriores
-  _editCorrections = [];
+  _editPageRotations= {}; // rotações reiniciam (PDF já carregado com /Rotate correto)
   $('previewModal').classList.add('show');
   $('previewFrame').src = 'about:blank';
   $('pageList').innerHTML = '<p class="sidebar-info" style="padding:8px">Gerando...</p>';
   $('pageTotalInfo').textContent = '';
   $('btnRemovePages').disabled = true;
-  try{
-    const blob = await montarDatabook();
-    const rawBytes = await blob.arrayBuffer();
-    // Aplica seleção do drawer: preview mostra apenas páginas marcadas
-    _previewBytes = await _aplicarDrawerMask(rawBytes);
+
+  if(_persistedPreviewBytes){
+    // Reutilizar estado salvo — mantém remoções e edições anteriores
+    _previewBytes = _persistedPreviewBytes;
+    _correctedBytes = _persistedPreviewBytes;
     _atualizarFrame();
     await _atualizarListaPaginas();
-  }catch(e){ alert('Erro: '+e.message); }
+  } else {
+    _keptPageIndices = null;
+    _correctedBytes  = null;
+    try{
+      const blob = await montarDatabook();
+      const rawBytes = await blob.arrayBuffer();
+      _previewBytes = await _aplicarDrawerMask(rawBytes);
+      _atualizarFrame();
+      await _atualizarListaPaginas();
+    }catch(e){ alert('Erro: '+e.message); }
+  }
 }
 
 function _atualizarFrame(){
@@ -478,6 +509,9 @@ async function removerPaginasDesmarcadas(){
   pages.forEach(p=>dst.addPage(p));
 
   _previewBytes = await dst.save(); // Uint8Array
+  _persistedPreviewBytes = _previewBytes; // sobrevive ao fechar/abrir o preview
+  _correctedBytes        = _previewBytes; // gerarPDF() usará diretamente
+  _atualizarBtnReset();
   _atualizarFrame();
   await _atualizarListaPaginas();
 }
@@ -498,6 +532,26 @@ function fecharPreview(){
   $('pageList').innerHTML = '<p class="sidebar-info" style="padding:8px">Abra o preview para listar.</p>';
   $('pageTotalInfo').textContent = '';
   $('btnRemovePages').disabled = true;
+  // _persistedPreviewBytes é mantido intencionalmente para sobreviver ao fechar
+}
+
+function _atualizarBtnReset(){
+  const btn = $('btnResetPreview');
+  if(btn) btn.style.display = _persistedPreviewBytes ? '' : 'none';
+}
+
+async function resetarPreview(){
+  if(!confirm('Isso vai descartar todas as páginas removidas e edições salvas, voltando ao PDF original. Continuar?')) return;
+  _persistedPreviewBytes = null;
+  _keptPageIndices       = null;
+  _correctedBytes        = null;
+  _editCorrections       = [];
+  _editPageRotations     = {};
+  _atualizarBtnReset();
+  if($('previewModal').classList.contains('show')){
+    fecharPreview();
+    await abrirPreview();
+  }
 }
 
 // ─── Modo de edição / sobreposição ──────────────────────────────────────────
@@ -506,8 +560,8 @@ async function entrarModoEdicao(){
   if(!_previewBytes){ alert('Abra o preview antes de editar.'); return; }
   _editMode = true;
   _editCurrentPage = 1;
-  _editCorrections  = [];
-  _editPageRotations= {};
+  // _editCorrections é preservado: caixas pendentes (não aplicadas) voltam ao entrar de novo
+  _editPageRotations= {}; // rotações sempre reiniciam (já estão gravadas no PDF se aplicadas)
 
   // Começa no modo selecionar
   setEditTool('select');
@@ -722,8 +776,11 @@ function _criarBoxDiv(corr, idx){
   document.addEventListener('mouseup', ()=>{ dragging=false; });
 
   // ResizeObserver acompanha redimensionamento nativo (CSS resize)
+  // Ignora o primeiro disparo (montagem inicial) para não sobrescrever dimensões salvas
   if(window.ResizeObserver){
+    let _rsMounted = false;
     new ResizeObserver(()=>{
+      if(!_rsMounted){ _rsMounted = true; return; }
       _editCorrections[idx].w = box.offsetWidth;
       _editCorrections[idx].h = box.offsetHeight;
     }).observe(box);
@@ -770,7 +827,7 @@ async function aplicarCorrecoes(){
     } else if(rot === 90){
       pdfX = width-(c.y+rh)/s;  pdfY = height-(c.x+rw)/s;   pdfW = rh/s; pdfH = rw/s;
     } else if(rot === 180){
-      pdfX = width-(c.x+rw)/s;  pdfY = c.y/s;               pdfW = rw/s; pdfH = rh/s;
+      pdfX = width-(c.x+rw)/s;  pdfY = height-(c.y+rh)/s;   pdfW = rw/s; pdfH = rh/s;
     } else {
       pdfX = c.y/s;             pdfY = c.x/s;               pdfW = rh/s; pdfH = rw/s;
     }
@@ -812,8 +869,21 @@ async function aplicarCorrecoes(){
     }
   }
 
-  _correctedBytes = await doc.save();
-  _previewBytes   = _correctedBytes;
+  // Grava a rotação de cada página girada no próprio PDF
+  for(const [pgStr, rot] of Object.entries(_editPageRotations)){
+    if(!rot) continue;
+    const pg = pages[parseInt(pgStr) - 1];
+    if(pg) pg.setRotation(degrees(rot));
+  }
+
+  _correctedBytes        = await doc.save();
+  _previewBytes          = _correctedBytes;
+  _persistedPreviewBytes = _correctedBytes; // sobrevive ao fechar/abrir o preview
+  _atualizarBtnReset();
+
+  // Limpa caixas e rotações: estão gravadas no PDF, não precisam mais de estado
+  _editCorrections  = [];
+  _editPageRotations= {};
 
   // Recarrega o preview com o PDF corrigido
   sairEdicao();
@@ -879,8 +949,9 @@ async function montarDatabook(){
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '2', 'RELATÓRIO DIÁRIO DE OPERAÇÕES');
   if(STATE.uploads.rdo) await anexarPdf(pdf, STATE.uploads.rdo);
 
-  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '3', 'RELATÓRIO DE EXECUÇÃO');
+  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '3', 'RELATÓRIO DE EXECUÇÃO E REGISTRO DE INSTALAÇÃO');
   if(STATE.uploads.rel) await anexarPdf(pdf, STATE.uploads.rel);
+  if(STATE.uploads.rdi) await anexarPdf(pdf, STATE.uploads.rdi);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '4', 'PROJETO');
   if(STATE.uploads.mem) await anexarPdf(pdf, STATE.uploads.mem);
@@ -899,7 +970,7 @@ async function montarDatabook(){
     await anexarPdf(pdf, b64ToBytes(pda[c.value]));
   }
 
-  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '8', 'ANÁLISE DE RISCO DO REPARO');
+  await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '8', 'AVALIAÇÃO DE RISCO DO REPARO');
   if(STATE.uploads.arpt) await anexarPdf(pdf, STATE.uploads.arpt);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '9', 'CERTIFICADO DE GARANTIA');
@@ -1234,12 +1305,12 @@ async function desenhaIndice(pdf, fontReg, fontBold, logoTeamPng, docNum){
   const itens = [
     ['1',  'SOLICITAÇÃO DE SERVIÇO'],
     ['2',  'RELATÓRIO DIÁRIO DE OPERAÇÕES'],
-    ['3',  'RELATÓRIO DE EXECUÇÃO'],
+    ['3',  'RELATÓRIO DE EXECUÇÃO E REGISTRO DE INSTALAÇÃO'],
     ['4',  'PROJETO'],
     ['5',  'PROCEDIMENTOS'],
     ['6',  'FICHA TÉCNICA'],
     ['7',  'PDA'],
-    ['8',  'ANÁLISE DE RISCO DO REPARO'],
+    ['8',  'AVALIAÇÃO DE RISCO DO REPARO'],
     ['9',  'CERTIFICADO DE GARANTIA'],
     ['10', 'CERTIFICADOS DE QUALIFICAÇÃO DOS TÉCNICOS'],
   ];
