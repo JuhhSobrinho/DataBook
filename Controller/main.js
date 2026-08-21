@@ -1462,7 +1462,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
     ['TEMPERATURA DE OPERAÇÃO:',       ($('cgTOper').value ? $('cgTOper').value+' C' : '')],
     ['NORMAS APLICÁVEIS:',             $('cgNormas').value||''],
     ['ENQUADRAMENTO NA CERTIFICADORA ABS:', (($('cgAbsText')||{}).value)||''],
-    ['VIDA ÚTIL DO REPARO PROJETADO:', $('cgVida').value||''],
+    ['VIDA ÚTIL DO REPARO PROJETADO:', ($('cgVida').value ? $('cgVida').value+' anos' : '')],
   ];
   const maxSpecLW = Math.max(...specRows.map(([l]) => fontBold.widthOfTextAtSize(l, 8.5)));
   const valAreaW = 175;

@@ -128,6 +128,7 @@
         <option value="Carlos Henrique P da Silva">
         <option value="Lais Souza Leite">
         <option value="Juliano Sobrinho">
+        <option value="Marcelo Dantas">
       </datalist>
     </div>
     <div class="field" style="margin-top:6px">
@@ -370,13 +371,13 @@
     <div class="cert-section">
       <h4>Assinatura / Responsavel</h4>
       <div class="grid grid-2">
-        <div class="field"><label>Nome do Responsavel</label><input type="text" id="cgGerente" value="Henrique Biondi"></div>
-        <div class="field"><label>Cargo</label><input type="text" id="cgCargo" value="Supervisor Técnico Comercial LRS"></div>
+        <div class="field"><label>Nome do Responsavel</label><input type="text" id="cgGerente" value=""></div>
+        <div class="field"><label>Cargo</label><input type="text" id="cgCargo" value="Engenheiro Mecânico"></div>
       </div>
       <div class="field" style="margin-top:12px">
         <label>Imagem da Assinatura <span style="color:var(--muted);font-weight:400">(PNG recomendado - fundo transparente)</span></label>
         <div class="upload-zone" id="assinaturaZone" onclick="document.getElementById('assinaturaFile').click()" style="max-width:340px">
-          <p id="assinaturaName">Assinatura (foto/rubrica) — Henrique Biondi</p>
+          <p id="assinaturaName">Assinatura (foto/rubrica)</p>
           <input type="file" id="assinaturaFile" accept="image/png,image/jpeg" style="display:none">
         </div>
       </div>
@@ -682,7 +683,6 @@
   atualizarLabelAssinatura();
 
   // ── Elaborado por → última página (ELABORADORES em main.js) ─────────────
-  // O Responsável/Assinatura do certificado é fixo: Henrique Biondi
 
   const capaElabEl = document.getElementById('capaElab');
 
