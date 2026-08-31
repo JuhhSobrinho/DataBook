@@ -22,6 +22,24 @@ async function fileToBuffer(file){
     fr.readAsArrayBuffer(file);
   });
 }
+async function compressImageFile(file, {maxDim=1600, mime='image/jpeg', quality=0.82} = {}){
+  try{
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+    if(bitmap.close) bitmap.close();
+    const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
+    if(!blob) throw new Error('toBlob falhou');
+    return { buffer: await blob.arrayBuffer(), type: mime };
+  }catch(e){
+    console.warn('compressImageFile: usando arquivo original sem compactar', e);
+    return { buffer: await fileToBuffer(file), type: file.type };
+  }
+}
 function $(id){return document.getElementById(id)}
 function fmtDate(iso){
   if(!iso) return '';
@@ -61,21 +79,24 @@ setupUpload('arptFile','arptZone','arptName','arpt');
 $('logoCliente').addEventListener('change', async ()=>{
   const f = $('logoCliente').files[0];
   if(!f) return;
-  STATE.logoCliente = await fileToBuffer(f);
-  STATE.logoClienteType = f.type;
+  const mime = (f.type === 'image/jpeg' || f.type === 'image/jpg') ? 'image/jpeg' : 'image/png';
+  const {buffer, type} = await compressImageFile(f, {maxDim:900, mime, quality:0.85});
+  STATE.logoCliente = buffer;
+  STATE.logoClienteType = type;
   $('logoClienteName').textContent = '[OK] ' + f.name;
   $('logoClienteZone').classList.add('has-file');
   updateStatus();
 });
 
-function setupFoto(inputId, zoneId, nameId, stateKey){
+function setupFoto(inputId, zoneId, nameId, stateKey, compressOpts){
   const inp = $(inputId);
   if(!inp) return;
   inp.addEventListener('change', async ()=>{
     const file = inp.files[0];
     if(!file) return;
-    STATE[stateKey]        = await fileToBuffer(file);
-    STATE[stateKey+'Type'] = file.type;
+    const {buffer, type} = await compressImageFile(file, compressOpts);
+    STATE[stateKey]        = buffer;
+    STATE[stateKey+'Type'] = type;
     $(nameId).textContent  = file.name;
     $(zoneId).classList.add('has-file');
 
@@ -83,7 +104,7 @@ function setupFoto(inputId, zoneId, nameId, stateKey){
     const previewId = inputId.replace('File', 'Preview');
     const prev = document.getElementById(previewId);
     if(prev){
-      const url = URL.createObjectURL(file);
+      const url = URL.createObjectURL(new Blob([buffer], {type}));
       prev.onload = () => URL.revokeObjectURL(url);
       prev.src = url;
       prev.style.display = 'block';
@@ -91,9 +112,9 @@ function setupFoto(inputId, zoneId, nameId, stateKey){
     }
   });
 }
-setupFoto('fotoAntesFile','fotoAntesZone','fotoAntesName','fotoAntes');
-setupFoto('fotoDepoisFile','fotoDepoisZone','fotoDepoisName','fotoDepois');
-setupFoto('assinaturaFile','assinaturaZone','assinaturaName','assinatura');
+setupFoto('fotoAntesFile','fotoAntesZone','fotoAntesName','fotoAntes', {maxDim:1600, mime:'image/jpeg', quality:0.82});
+setupFoto('fotoDepoisFile','fotoDepoisZone','fotoDepoisName','fotoDepois', {maxDim:1600, mime:'image/jpeg', quality:0.82});
+setupFoto('assinaturaFile','assinaturaZone','assinaturaName','assinatura', {maxDim:900, mime:'image/png'});
 
 function coletarRevisoes(){
   return [...document.querySelectorAll('.revisao-row')].map(row=>({
