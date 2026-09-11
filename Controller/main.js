@@ -1087,13 +1087,50 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
 
 }
 
+const COMPRESS_DPI     = 150;  // resolucao efetiva das paginas anexadas no PDF final
+const COMPRESS_QUALITY = 0.72; // qualidade do JPEG re-codificado (0 a 1)
+
 async function anexarPdf(targetPdf, source){
+  if(window.pdfjsLib){
+    try{
+      await anexarPdfComprimido(targetPdf, _toU8(source));
+      return;
+    }catch(e){ console.warn('anexarPdf: compressao falhou, usando copia sem compressao:', e); }
+  }
   try{
-    const src = await PDFDocument.load(source, {ignoreEncryption:true});
+    const src = await PDFDocument.load(_toU8(source), {ignoreEncryption:true});
     const idx = src.getPageIndices();
     const pages = await targetPdf.copyPages(src, idx);
     pages.forEach(p=>targetPdf.addPage(p));
   }catch(e){ console.error('anexarPdf:', e) }
+}
+
+// Rasteriza cada pagina do PDF de origem e a reinsere como JPEG comprimido,
+// reduzindo drasticamente o tamanho final (paginas anexadas sao, em geral,
+// documentos digitalizados/fotografados sem necessidade de texto selecionavel).
+async function anexarPdfComprimido(targetPdf, bytes){
+  const srcPdf = await pdfjsLib.getDocument({data: bytes}).promise;
+  const scale  = COMPRESS_DPI / 72;
+  for(let i = 1; i <= srcPdf.numPages; i++){
+    const page     = await srcPdf.getPage(i);
+    const viewport = page.getViewport({scale});
+    const canvas   = document.createElement('canvas');
+    canvas.width   = Math.round(viewport.width);
+    canvas.height  = Math.round(viewport.height);
+
+    const renderTask = page.render({canvasContext: canvas.getContext('2d'), viewport});
+    await Promise.race([
+      renderTask.promise,
+      new Promise((_, rej) => setTimeout(() => { renderTask.cancel(); rej(new Error('render timeout')); }, 20000))
+    ]);
+
+    const jpegB64  = canvas.toDataURL('image/jpeg', COMPRESS_QUALITY).split(',')[1];
+    const img      = await targetPdf.embedJpg(b64ToBytes(jpegB64));
+    const widthPt  = viewport.width  / scale;
+    const heightPt = viewport.height / scale;
+    const newPage  = targetPdf.addPage([widthPt, heightPt]);
+    newPage.drawImage(img, {x:0, y:0, width:widthPt, height:heightPt});
+  }
 }
 
 function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
