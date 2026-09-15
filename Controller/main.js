@@ -1087,8 +1087,8 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
 
 }
 
-const COMPRESS_DPI     = 150;  // resolucao efetiva das paginas anexadas no PDF final
-const COMPRESS_QUALITY = 0.72; // qualidade do JPEG re-codificado (0 a 1)
+const COMPRESS_DPI     = 115;  // resolucao efetiva das paginas anexadas no PDF final
+const COMPRESS_QUALITY = 0.55; // qualidade do JPEG re-codificado (0 a 1)
 
 async function anexarPdf(targetPdf, source){
   if(window.pdfjsLib){
