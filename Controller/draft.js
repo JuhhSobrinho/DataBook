@@ -42,7 +42,6 @@ function coletarRascunho(){
     },
     radios: {
       cgAbs: (document.querySelector('input[name=cgAbs]:checked')||{}).value||'SIM',
-      cgPfp: (document.querySelector('input[name=cgPfp]:checked')||{}).value||'SIM',
     },
     revisoes: coletarRevisoes(),
     proc:   document.querySelector('input[name=proc]:checked')?.value||null,

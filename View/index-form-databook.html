@@ -20,6 +20,7 @@
   <div class="title">
     <h1>Gerador de Databook</h1>
     <h2>Relatorio Final de Execucao - TEAM Industrial Services</h2>
+    <div id="headerDocNumero" style="font-family:monospace;font-size:12px;color:var(--team-blue);margin-top:2px"></div>
   </div>
   <button id="btnTema" class="btn btn-outline" onclick="alternarTema()" title="Alternar tema">🌙</button>
   <button id="btnResetPreview" class="btn btn-outline" onclick="resetarPreview()" title="Descartar remoções e edições salvas no preview" style="display:none">&#x21BA; Resetar</button>
@@ -354,8 +355,8 @@
       </div>
       <div>
         <strong style="font-size:13px;color:var(--team-gray)">Aplicacao de PFP:</strong>
-        <label class="checkbox-inline"><input type="radio" name="cgPfp" value="SIM" checked> SIM</label>
-        <label class="checkbox-inline"><input type="radio" name="cgPfp" value="NAO"> NAO</label>
+        <strong id="pfpAutoIndicador" style="font-size:13px"></strong>
+        <p class="hint" style="margin-top:2px">Automatico — segue a selecao do "Certificado Jotun Jotachar" na Ficha Tecnica (etapa 8)</p>
       </div>
       <div class="grid grid-2" style="margin-top:8px">
         <div class="field"><label>Espessura PFP (mm)</label><input type="text" id="cgPfpEsp" placeholder="5"></div>
@@ -628,10 +629,20 @@
     if (match) sincronizar('cgSerial', match[1]);
   });
 
-  // ── Fichas técnicas → atualiza descrição ao marcar/desmarcar Jotun ───────
+  // ── Fichas técnicas → atualiza descrição e indicador de PFP ao marcar/desmarcar Jotun ───────
   document.querySelectorAll('input[name="ficha"]').forEach(cb => {
     cb.addEventListener('change', atualizarDescricao);
+    cb.addEventListener('change', atualizarPfpIndicador);
   });
+
+  function atualizarPfpIndicador(){
+    const el = document.getElementById('pfpAutoIndicador');
+    if (!el) return;
+    const jotunMarcado = !!document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]:checked');
+    el.textContent = jotunMarcado ? 'SIM' : 'NÃO';
+    el.style.color = jotunMarcado ? 'var(--team-blue)' : 'var(--muted)';
+  }
+  atualizarPfpIndicador();
 
   // ── Data do certificado e PDA → atualiza descrição ao editar ────────────
   const cgDataEl2 = document.getElementById('cgData');

@@ -51,7 +51,10 @@ function cssEscape(s){return s.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}
 function normaliza(s){return s.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim()}
 
 function updateDocPreview(){
-  $('docPreview').textContent = 'TEAM-8104-'+($('doc1').value||'XX')+'-'+($('doc2').value||'XXXX')+'-RFE-REP-'+($('doc3').value||'XXXX')+'-SS-'+($('doc4').value||'XX')+'-'+($('doc5').value||'20XX');
+  const numero = getDocNumero();
+  $('docPreview').textContent = numero;
+  const hdr = $('headerDocNumero');
+  if(hdr) hdr.textContent = numero;
 }
 ['doc1','doc2','doc3','doc4','doc5'].forEach(id => $(id).addEventListener('input', updateDocPreview));
 updateDocPreview();
@@ -1534,12 +1537,15 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   }
   y -= 2;
 
-  const pfp = (document.querySelector('input[name=cgPfp]:checked')||{}).value||'NAO';
+  // PFP e' automatico: decorre da selecao do Certificado Jotun Jotachar na Ficha Tecnica
+  const pfp = document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]:checked') ? 'SIM' : 'NAO';
   const simMark = pfp==='SIM' ? '( X )' : '(   )';
   const naoMark = pfp!=='SIM' ? '( X )' : '(   )';
-  const esp = ($('cgPfpEsp')||{}).value||'';
+  const esp  = ($('cgPfpEsp')||{}).value||'';
   const comp = ($('cgPfpComp')||{}).value||'';
-  const pfpTxt = 'FOI REALIZADO APLICAÇÃO DE PFP:   '+simMark+' SIM   '+naoMark+' NÃO        ESPESSURA: '+esp+'        COMP.: '+comp;
+  const espTxt  = esp  ? esp+' mm'  : '';
+  const compTxt = comp ? comp+' mm' : '';
+  const pfpTxt = 'FOI REALIZADO APLICAÇÃO DE PFP:   '+simMark+' SIM   '+naoMark+' NÃO        ESPESSURA: '+espTxt+'        COMP.: '+compTxt;
   page.drawText(pfpTxt, {x:(PAGE_W-fontReg.widthOfTextAtSize(pfpTxt,8.5))/2, y, size:8.5, font:fontReg, color:BLACK});
 
   // ---- PAGINA 2 ----
