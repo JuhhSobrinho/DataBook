@@ -1092,6 +1092,17 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
 
 const COMPRESS_DPI     = 115;  // resolucao efetiva das paginas anexadas no PDF final
 const COMPRESS_QUALITY = 0.55; // qualidade do JPEG re-codificado (0 a 1)
+const MAX_RENDER_PX    = 1800; // teto de pixels no maior lado do canvas de renderizacao
+
+// Toda pagina anexada (upload ou asset) e normalizada para o tamanho A4 (PAGE_W x PAGE_H),
+// com o conteudo original ajustado por contain (sem distorcer) e centralizado. Isso evita
+// que um PDF de origem com Caixa de Midia fora do padrao (ex.: PDF gerado por ferramenta que
+// grava pixels como se fossem pontos) produza uma pagina gigante no databook final.
+function _fitRectoA4(srcW, srcH){
+  const scale = Math.min(PAGE_W / srcW, PAGE_H / srcH);
+  const width  = srcW * scale, height = srcH * scale;
+  return { x:(PAGE_W-width)/2, y:(PAGE_H-height)/2, width, height };
+}
 
 async function anexarPdf(targetPdf, source){
   if(window.pdfjsLib){
@@ -1101,10 +1112,12 @@ async function anexarPdf(targetPdf, source){
     }catch(e){ console.warn('anexarPdf: compressao falhou, usando copia sem compressao:', e); }
   }
   try{
-    const src = await PDFDocument.load(_toU8(source), {ignoreEncryption:true});
-    const idx = src.getPageIndices();
-    const pages = await targetPdf.copyPages(src, idx);
-    pages.forEach(p=>targetPdf.addPage(p));
+    const bytes    = _toU8(source);
+    const embedded = await targetPdf.embedPdf(bytes); // vetorial, sem recomprimir
+    for(const embPage of embedded){
+      const newPage = targetPdf.addPage([PAGE_W, PAGE_H]);
+      newPage.drawPage(embPage, _fitRectoA4(embPage.width, embPage.height));
+    }
   }catch(e){ console.error('anexarPdf:', e) }
 }
 
@@ -1113,10 +1126,19 @@ async function anexarPdf(targetPdf, source){
 // documentos digitalizados/fotografados sem necessidade de texto selecionavel).
 async function anexarPdfComprimido(targetPdf, bytes){
   const srcPdf = await pdfjsLib.getDocument({data: bytes}).promise;
-  const scale  = COMPRESS_DPI / 72;
   for(let i = 1; i <= srcPdf.numPages; i++){
-    const page     = await srcPdf.getPage(i);
-    const viewport = page.getViewport({scale});
+    const page = await srcPdf.getPage(i);
+    let scale  = COMPRESS_DPI / 72;
+    let viewport = page.getViewport({scale});
+
+    // Teto de seguranca: paginas de origem com Caixa de Midia fora do padrao (muitos milhares
+    // de "pontos") nao devem gerar canvases gigantes so por causa do DPI configurado.
+    const maiorLado = Math.max(viewport.width, viewport.height);
+    if(maiorLado > MAX_RENDER_PX){
+      scale = scale * (MAX_RENDER_PX / maiorLado);
+      viewport = page.getViewport({scale});
+    }
+
     const canvas   = document.createElement('canvas');
     canvas.width   = Math.round(viewport.width);
     canvas.height  = Math.round(viewport.height);
@@ -1131,8 +1153,8 @@ async function anexarPdfComprimido(targetPdf, bytes){
     const img      = await targetPdf.embedJpg(b64ToBytes(jpegB64));
     const widthPt  = viewport.width  / scale;
     const heightPt = viewport.height / scale;
-    const newPage  = targetPdf.addPage([widthPt, heightPt]);
-    newPage.drawImage(img, {x:0, y:0, width:widthPt, height:heightPt});
+    const newPage  = targetPdf.addPage([PAGE_W, PAGE_H]);
+    newPage.drawImage(img, _fitRectoA4(widthPt, heightPt));
   }
 }
 
