@@ -204,38 +204,57 @@ Se `createImageBitmap`/`canvas.toBlob` falhar por qualquer motivo, cai no arquiv
 
 ---
 
-## 8. Compressão dos anexos em PDF (`anexarPdf`)
+## 8. Tamanho de página (A4) e compressão dos anexos
 
-Ponto de maior atenção do projeto: o PDF final chegou a sair com **~20MB** porque cada PDF anexado (RDO, RDE, certificados escaneados etc.) era copiado página a página sem nenhuma recompressão — `copyPages` do pdf-lib é uma cópia vetorial exata, imagem original embutida inclusa, e a maioria dos anexos são digitalizações/fotos de documentos físicos.
+Dois problemas relacionados, resolvidos juntos: (1) o PDF final chegou a sair com **~20MB** porque cada PDF anexado (RDO, RDE, certificados escaneados etc.) era copiado sem nenhuma recompressão; (2) algumas páginas anexadas saíam com um tamanho físico diferente das demais (ex.: a ficha da Resimac saía enorme) porque `anexarPdf` usava o tamanho de página do PDF de origem — e um PDF de origem com Caixa de Mídia mal formada (ex.: gerado por uma ferramenta que grava pixels como se fossem pontos) produzia uma página gigante.
 
-`anexarPdf()` ([main.js:1093](Controller/main.js#L1093)) hoje faz, para cada PDF anexado:
+A arquitetura atual separa **montagem** (sempre vetorial/nítida — usada na pré-visualização, no editor e como base do PDF final) de **compressão** (só acontece uma vez, no exato momento em que o usuário clica em "Gerar PDF").
 
-1. Renderiza cada página no `<canvas>` via PDF.js, numa resolução fixa (`COMPRESS_DPI`, convertida de DPI para escala: `scale = DPI / 72`).
-2. Reexporta esse canvas como JPEG numa qualidade fixa (`COMPRESS_QUALITY`).
-3. Cria uma página nova no PDF final, do mesmo tamanho em pontos que a original, e desenha essa imagem JPEG ocupando a página inteira.
+### 8.1 Montagem — sempre em qualidade total (`anexarPdf`)
 
-```js
-const COMPRESS_DPI     = 115;  // resolucao efetiva das paginas anexadas no PDF final
-const COMPRESS_QUALITY = 0.55; // qualidade do JPEG re-codificado (0 a 1)
-```
-
-Esses dois números são o único lugar a mexer para trocar o equilíbrio nitidez↔tamanho. Weight de referência: reduzir o DPI tem impacto **quadrático** no tamanho (metade do DPI ≈ 1/4 dos pixels); a qualidade JPEG tem impacto mais suave e não-linear.
-
-**Fallback de segurança (`anexarPdfComprimido`, [main.js:1111](Controller/main.js#L1111)):** cada página tem um timeout de 20s de renderização; se estourar (ou qualquer outro erro no caminho de compressão), `anexarPdf` cai automaticamente no método antigo (`PDFDocument.load` + `copyPages`, sem compressão) **só para aquele anexo específico**. Isso significa que a geração nunca trava por completo — na pior das hipóteses, um único anexo problemático sai sem compressão, sem derrubar o resto do documento.
+`anexarPdf()` ([main.js:1112](Controller/main.js#L1112)) embute o PDF de origem inteiro via `pdf.embedPdf()` (API do pdf-lib que traz cada página como um XObject vetorial reutilizável) e desenha cada página numa página nova, sempre no tamanho A4 fixo (`PAGE_W x PAGE_H`), com o conteúdo original ajustado por **contain** (sem distorcer) e centralizado — `_fitRectoA4()` ([main.js:1101](Controller/main.js#L1101)) calcula esse retângulo. Isso resolve o problema do tamanho de página de uma vez por todas: **toda** página do databook final — gerada pelo app ou anexada — tem exatamente o mesmo tamanho físico.
 
 ```js
-async function anexarPdf(targetPdf, source){
-  if(window.pdfjsLib){
-    try{ await anexarPdfComprimido(targetPdf, _toU8(source)); return; }
-    catch(e){ console.warn('anexarPdf: compressao falhou, usando copia sem compressao:', e); }
-  }
-  // fallback: copyPages sem compressao
+function _fitRectoA4(srcW, srcH){
+  const scale = Math.min(PAGE_W / srcW, PAGE_H / srcH);
+  const width  = srcW * scale, height = srcH * scale;
+  return { x:(PAGE_W-width)/2, y:(PAGE_H-height)/2, width, height };
 }
 ```
 
-**Trade-off consciente:** essa rasterização transforma texto pesquisável em imagem. Como a maioria dos anexos já são digitalizações (fotos/scans de RDO, RDE, certificados), isso normalmente não perde nada relevante — mas fichas técnicas com texto vetorial nativo (ex.: PDF gerado direto de um sistema, como a ficha da Vectorply) também passam por isso e perdem a seleção de texto, ficando só como imagem de alta resolução. Se algum documento específico precisar continuar 100% pesquisável, ele precisaria de um caminho separado que não passe por `anexarPdfComprimido` — hoje não existe essa exceção, o tratamento é uniforme para todo anexo.
+Cada página assim criada é marcada com uma entrada customizada no próprio dicionário da página do PDF (`newPage.node.set(PDFName.of(ANEXO_MARK), PDFBool.True)`) — é assim que o passo de compressão (a seguir) sabe, mais tarde, quais páginas pode rasterizar e quais são conteúdo gerado pelo app (capa, separadores, índice, certificado) e devem continuar vetoriais. Essa marca é uma entrada de baixo nível do PDF, então **sobrevive** a `copyPages`, `save` e `load` — validado manualmente: uma página marcada continua marcada depois de passar pelo ciclo completo save→load→copyPages→save→load que o app usa em vários lugares (drawer de miniaturas, remoção de páginas no preview, editor de correções).
 
-**Nota de ambiente:** `_toU8()` ([main.js:331](Controller/main.js#L331)) sempre faz uma cópia independente (`.slice(0)`) dos bytes antes de passar para o PDF.js — necessário porque `pdfjsLib.getDocument()` **transfere/detacha** o `ArrayBuffer` original para o worker. Sem essa cópia, gerar o PDF uma segunda vez com o mesmo upload falharia silenciosamente.
+Como essa função não depende mais do PDF.js, a pré-visualização e o editor de sobreposição ficam **rápidos e sempre nítidos** — nada é rasterizado até o usuário decidir baixar o arquivo.
+
+### 8.2 Compressão — só na hora de baixar (`comprimirDatabookFinal`)
+
+`gerarPDF()` ([main.js:274](Controller/main.js#L274)) monta o databook (ou reusa `_correctedBytes`, se o usuário editou/rotacionou no preview), aplica remoções de página (drawer + preview) e só então, como último passo antes de criar o link de download, chama:
+
+```js
+bytes = await comprimirDatabookFinal(bytes);
+```
+
+`comprimirDatabookFinal()` ([main.js:1130](Controller/main.js#L1130)) recebe o PDF já pronto (com todas as edições do usuário já aplicadas) e:
+
+1. Carrega o PDF com pdf-lib e lê, página a página, se ela tem a marca `ANEXO_MARK`.
+2. Para as páginas **sem** a marca (geradas pelo app), embute de volta como vetor — sem custo de qualidade.
+3. Para as páginas **com** a marca, renderiza no `<canvas>` via PDF.js numa resolução fixa (`COMPRESS_DPI`) e reexporta como JPEG numa qualidade fixa (`COMPRESS_QUALITY`), desenhando o resultado ajustado por `_fitRectoA4` na página A4.
+
+```js
+const COMPRESS_DPI     = 100;  // resolucao efetiva das paginas anexadas no PDF final
+const COMPRESS_QUALITY = 0.45; // qualidade do JPEG re-codificado (0 a 1)
+const MAX_RENDER_PX    = 1800; // teto de pixels no maior lado do canvas de renderizacao
+```
+
+Esses números são o único lugar a mexer para trocar o equilíbrio nitidez↔tamanho. Reduzir o DPI tem impacto **quadrático** no tamanho (metade do DPI ≈ 1/4 dos pixels); a qualidade JPEG tem impacto mais suave e não-linear. `MAX_RENDER_PX` é um teto de segurança independente do DPI configurado — protege contra páginas de origem com Caixa de Mídia fora do padrão (a mesma causa do bug da página gigante) gerando canvases enormes e mais pesados do que precisam.
+
+**Importante para não desperdiçar a compressão:** só é embutido (`embedPdf`) o conteúdo vetorial das páginas que **não** serão rasterizadas — as páginas marcadas são deixadas de fora desse embed inicial, senão o PDF final carregaria o conteúdo pesado original de qualquer forma, mesmo sem desenhá-lo.
+
+**Fallback de segurança:** cada página marcada tem um timeout de 20s de renderização; se estourar (ou qualquer outro erro), aquela página específica cai para o embed vetorial original (sem compressão), sem derrubar a geração do resto do documento — a lógica é idêntica à do antigo `anexarPdfComprimido`, só que rodando uma vez no final em vez de uma vez por anexo durante a montagem.
+
+**Trade-off consciente:** a rasterização transforma texto pesquisável em imagem. Como a maioria dos anexos já são digitalizações (fotos/scans de RDO, RDE, certificados), isso normalmente não perde nada relevante — mas fichas técnicas com texto vetorial nativo (ex.: PDF gerado direto de um sistema, como a ficha da Vectorply) também passam por isso e perdem a seleção de texto, ficando só como imagem de alta resolução. Não existe hoje uma forma de marcar um anexo específico como "manter pesquisável, não comprimir" — o tratamento é uniforme para todo anexo.
+
+**Nota de ambiente:** `_toU8()` ([main.js:331](Controller/main.js#L331)) sempre faz uma cópia independente (`.slice(0)`) dos bytes antes de passar para o PDF.js — necessário porque `pdfjsLib.getDocument()` **transfere/detacha** o `ArrayBuffer` original para o worker. Sem essa cópia, comprimir (ou gerar o PDF) uma segunda vez com os mesmos bytes falharia silenciosamente.
 
 ---
 

@@ -263,7 +263,7 @@ document.querySelectorAll('.nav-link').forEach(a=>{
 });
 updateStatus();
 
-const { PDFDocument, StandardFonts, rgb, degrees } = PDFLib;
+const { PDFDocument, StandardFonts, rgb, degrees, PDFName, PDFBool } = PDFLib;
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 const MARGIN = 50;
@@ -297,6 +297,10 @@ async function gerarPDF(){
         bytes = await dst.save();
       }
     }
+
+    // Compressao so acontece agora, na hora de gerar o arquivo final — a pre-visualizacao
+    // e o editor trabalham sempre com as paginas em qualidade total.
+    bytes = await comprimirDatabookFinal(bytes);
 
     const url = URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
     const a = document.createElement('a');
@@ -1090,9 +1094,10 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
 
 }
 
-const COMPRESS_DPI     = 115;  // resolucao efetiva das paginas anexadas no PDF final
-const COMPRESS_QUALITY = 0.55; // qualidade do JPEG re-codificado (0 a 1)
+const COMPRESS_DPI     = 100;  // resolucao efetiva das paginas anexadas, aplicada so na hora de gerar o PDF final
+const COMPRESS_QUALITY = 0.45; // qualidade do JPEG re-codificado (0 a 1)
 const MAX_RENDER_PX    = 1800; // teto de pixels no maior lado do canvas de renderizacao
+const ANEXO_MARK       = 'TeamAnexo'; // chave custom gravada no dict da pagina p/ identifica-la como anexo
 
 // Toda pagina anexada (upload ou asset) e normalizada para o tamanho A4 (PAGE_W x PAGE_H),
 // com o conteudo original ajustado por contain (sem distorcer) e centralizado. Isso evita
@@ -1104,58 +1109,94 @@ function _fitRectoA4(srcW, srcH){
   return { x:(PAGE_W-width)/2, y:(PAGE_H-height)/2, width, height };
 }
 
+// Anexa um PDF (upload ou asset) sempre em qualidade vetorial total — usado tanto na
+// pre-visualizacao quanto na montagem do databook, que por isso ficam nitidas e rapidas
+// (sem depender do PDF.js). Cada pagina anexada e marcada com ANEXO_MARK para que a
+// compressao (comprimirDatabookFinal) saiba, mais tarde, quais paginas pode rasterizar.
 async function anexarPdf(targetPdf, source){
-  if(window.pdfjsLib){
-    try{
-      await anexarPdfComprimido(targetPdf, _toU8(source));
-      return;
-    }catch(e){ console.warn('anexarPdf: compressao falhou, usando copia sem compressao:', e); }
-  }
   try{
     const bytes    = _toU8(source);
-    const embedded = await targetPdf.embedPdf(bytes); // vetorial, sem recomprimir
+    const embedded = await targetPdf.embedPdf(bytes);
     for(const embPage of embedded){
       const newPage = targetPdf.addPage([PAGE_W, PAGE_H]);
       newPage.drawPage(embPage, _fitRectoA4(embPage.width, embPage.height));
+      newPage.node.set(PDFName.of(ANEXO_MARK), PDFBool.True);
     }
   }catch(e){ console.error('anexarPdf:', e) }
 }
 
-// Rasteriza cada pagina do PDF de origem e a reinsere como JPEG comprimido,
-// reduzindo drasticamente o tamanho final (paginas anexadas sao, em geral,
-// documentos digitalizados/fotografados sem necessidade de texto selecionavel).
-async function anexarPdfComprimido(targetPdf, bytes){
-  const srcPdf = await pdfjsLib.getDocument({data: bytes}).promise;
-  for(let i = 1; i <= srcPdf.numPages; i++){
-    const page = await srcPdf.getPage(i);
-    let scale  = COMPRESS_DPI / 72;
-    let viewport = page.getViewport({scale});
+// Comprime o databook já montado (com remoções/edições já aplicadas), rodando só no
+// momento de gerar o PDF final para download — a pré-visualização e o editor continuam
+// trabalhando com as páginas em qualidade total. Só as páginas marcadas por anexarPdf são
+// rasterizadas/recomprimidas; capa, separadores, índice etc. permanecem vetoriais.
+async function comprimirDatabookFinal(bytes){
+  if(!window.pdfjsLib) return _toU8(bytes);
 
-    // Teto de seguranca: paginas de origem com Caixa de Midia fora do padrao (muitos milhares
-    // de "pontos") nao devem gerar canvases gigantes so por causa do DPI configurado.
-    const maiorLado = Math.max(viewport.width, viewport.height);
-    if(maiorLado > MAX_RENDER_PX){
-      scale = scale * (MAX_RENDER_PX / maiorLado);
-      viewport = page.getViewport({scale});
+  let srcDoc;
+  try{ srcDoc = await PDFDocument.load(_toU8(bytes), {ignoreEncryption:true}); }
+  catch(e){ console.warn('comprimirDatabookFinal: falha ao carregar PDF, mantendo sem compressao:', e); return _toU8(bytes); }
+
+  const srcPages   = srcDoc.getPages();
+  const anexoFlags = srcPages.map(p => !!p.node.get(PDFName.of(ANEXO_MARK)));
+  if(!anexoFlags.some(Boolean)) return _toU8(bytes); // nada marcado — nada a comprimir
+
+  let pdfJsDoc;
+  try{ pdfJsDoc = await pdfjsLib.getDocument({data: _toU8(bytes)}).promise; }
+  catch(e){ console.warn('comprimirDatabookFinal: PDF.js falhou, mantendo sem compressao:', e); return _toU8(bytes); }
+
+  const out = await PDFDocument.create();
+
+  // So embute (vetorial) as paginas que NAO vao ser rasterizadas — evita carregar no
+  // arquivo final o conteudo pesado original das paginas que serao recomprimidas.
+  const idxVetor      = anexoFlags.map((f,i) => f ? -1 : i).filter(i => i >= 0);
+  const embVetor      = idxVetor.length ? await out.embedPdf(_toU8(bytes), idxVetor) : [];
+  const embPorIndice  = new Map(idxVetor.map((origIdx, pos) => [origIdx, embVetor[pos]]));
+
+  for(let i = 0; i < srcPages.length; i++){
+    const newPage = out.addPage([PAGE_W, PAGE_H]);
+
+    if(!anexoFlags[i]){
+      const emb = embPorIndice.get(i);
+      newPage.drawPage(emb, _fitRectoA4(emb.width, emb.height));
+      continue;
     }
 
-    const canvas   = document.createElement('canvas');
-    canvas.width   = Math.round(viewport.width);
-    canvas.height  = Math.round(viewport.height);
+    try{
+      const page   = await pdfJsDoc.getPage(i+1);
+      let scale    = COMPRESS_DPI / 72;
+      let viewport = page.getViewport({scale});
 
-    const renderTask = page.render({canvasContext: canvas.getContext('2d'), viewport});
-    await Promise.race([
-      renderTask.promise,
-      new Promise((_, rej) => setTimeout(() => { renderTask.cancel(); rej(new Error('render timeout')); }, 20000))
-    ]);
+      // Teto de seguranca: paginas de origem com Caixa de Midia fora do padrao (muitos
+      // milhares de "pontos") nao devem gerar canvases gigantes so por causa do DPI.
+      const maiorLado = Math.max(viewport.width, viewport.height);
+      if(maiorLado > MAX_RENDER_PX){
+        scale = scale * (MAX_RENDER_PX / maiorLado);
+        viewport = page.getViewport({scale});
+      }
 
-    const jpegB64  = canvas.toDataURL('image/jpeg', COMPRESS_QUALITY).split(',')[1];
-    const img      = await targetPdf.embedJpg(b64ToBytes(jpegB64));
-    const widthPt  = viewport.width  / scale;
-    const heightPt = viewport.height / scale;
-    const newPage  = targetPdf.addPage([PAGE_W, PAGE_H]);
-    newPage.drawImage(img, _fitRectoA4(widthPt, heightPt));
+      const canvas  = document.createElement('canvas');
+      canvas.width  = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+
+      const renderTask = page.render({canvasContext: canvas.getContext('2d'), viewport});
+      await Promise.race([
+        renderTask.promise,
+        new Promise((_, rej) => setTimeout(() => { renderTask.cancel(); rej(new Error('render timeout')); }, 20000))
+      ]);
+
+      const jpegB64  = canvas.toDataURL('image/jpeg', COMPRESS_QUALITY).split(',')[1];
+      const img      = await out.embedJpg(b64ToBytes(jpegB64));
+      const widthPt  = viewport.width  / scale;
+      const heightPt = viewport.height / scale;
+      newPage.drawImage(img, _fitRectoA4(widthPt, heightPt));
+    }catch(e){
+      console.warn('comprimirDatabookFinal: pagina '+(i+1)+' sem compressao, usando original:', e);
+      const embFallback = (await out.embedPdf(_toU8(bytes), [i]))[0];
+      newPage.drawPage(embFallback, _fitRectoA4(embFallback.width, embFallback.height));
+    }
   }
+
+  return await out.save();
 }
 
 function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
