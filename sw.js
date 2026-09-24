@@ -1,4 +1,4 @@
-const CACHE_NAME = 'databook-v4';
+const CACHE_NAME = 'databook-v5';
 const BASE = self.registration.scope;
 
 // Assets principais — cacheados no install

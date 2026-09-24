@@ -1115,8 +1115,12 @@ function _fitRectoA4(srcW, srcH){
 // compressao (comprimirDatabookFinal) saiba, mais tarde, quais paginas pode rasterizar.
 async function anexarPdf(targetPdf, source){
   try{
-    const bytes    = _toU8(source);
-    const embedded = await targetPdf.embedPdf(bytes);
+    const bytes = _toU8(source);
+    // embedPdf() sem indices explicitos so traz a PRIMEIRA pagina — por isso e preciso
+    // carregar o doc a parte so pra descobrir quantas paginas ele tem.
+    const srcDoc   = await PDFDocument.load(_toU8(source), {ignoreEncryption:true});
+    const idx      = srcDoc.getPageIndices();
+    const embedded = await targetPdf.embedPdf(bytes, idx);
     for(const embPage of embedded){
       const newPage = targetPdf.addPage([PAGE_W, PAGE_H]);
       newPage.drawPage(embPage, _fitRectoA4(embPage.width, embPage.height));
