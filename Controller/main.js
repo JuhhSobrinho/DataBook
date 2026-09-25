@@ -56,7 +56,26 @@ function updateDocPreview(){
   const hdr = $('headerDocNumero');
   if(hdr) hdr.textContent = numero;
 }
-['doc1','doc2','doc3','doc4','doc5'].forEach(id => $(id).addEventListener('input', updateDocPreview));
+const DOC_FIELDS = ['doc1','doc2','doc3','doc4','doc5'];
+DOC_FIELDS.forEach(id => $(id).addEventListener('input', updateDocPreview));
+
+// Auto-avanca para o proximo campo do numero do documento ao preencher o campo atual
+// (e volta ao anterior no Backspace com o campo vazio) — como um input de codigo/OTP.
+DOC_FIELDS.forEach((id, i) => {
+  const el = $(id);
+  el.addEventListener('input', () => {
+    if (el.value.length >= el.maxLength && i < DOC_FIELDS.length - 1) {
+      $(DOC_FIELDS[i+1]).focus();
+    }
+  });
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !el.value && i > 0) {
+      e.preventDefault(); // sem isso o backspace tambem apaga um char do campo anterior
+      $(DOC_FIELDS[i-1]).focus();
+    }
+  });
+});
+
 updateDocPreview();
 $('capaData').valueAsDate = new Date();
 
