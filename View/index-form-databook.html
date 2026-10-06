@@ -104,6 +104,34 @@
 </aside>
 
 <main>
+  <section class="step" id="ppciPanel" style="display:none">
+    <h3><span class="num">+</span>Complemento PPCI</h3>
+    <p class="hint">Base importada: <strong id="ppciBase"></strong>. O book novo mantem tudo do book importado, com a capa regenerada (data nova), o RDE do PPCI no fim da secao 3 e um segundo certificado (PPCI) no fim da secao 9.</p>
+    <div class="grid grid-2">
+      <div class="field">
+        <label>RDE com a aplicacao do PPCI</label>
+        <label class="upload-zone" id="rdePpciZone">
+          <div class="icon">[+]</div>
+          <div class="text">Clique para anexar o PDF do RDE do PPCI</div>
+          <div class="filename" id="rdePpciName"></div>
+          <input type="file" id="rdePpciFile" accept="application/pdf">
+        </label>
+      </div>
+      <div class="field">
+        <label>Data do RDE com PPCI (data do certificado PPCI)</label>
+        <input type="date" id="cgDataPpci">
+      </div>
+      <div class="field"><label>Espessura PFP (mm)</label><input type="text" id="ppciEsp" placeholder="5"></div>
+      <div class="field"><label>Comprimento PFP (mm)</label><input type="text" id="ppciComp" placeholder="3200"></div>
+    </div>
+    <div class="field" style="margin-top:8px">
+      <label>Descricao do servico (certificado PPCI)</label>
+      <textarea id="ppciDesc"></textarea>
+    </div>
+    <p class="hint">O certificado PPCI usa os mesmos dados do certificado do composito (etapa 11), com PFP = SIM, sem normas aplicaveis e apenas com o enquadramento ABS. As fotos sao as do certificado do composito, a menos que voce envie outras na etapa 11. A data da capa (etapa 1) ja foi atualizada para hoje.</p>
+    <button type="button" class="btn btn-outline" onclick="cancelarImportacao()" style="margin-top:8px">Cancelar importacao</button>
+  </section>
+
   <section class="step" id="s1">
     <h3><span class="num">1</span>Capa</h3>
     <p class="hint">Padrao: <code>TEAM-8104-XX-XXXX-RFE-REP-XXXX-SS-XX-20XX</code></p>
@@ -419,6 +447,7 @@
     <span id="totalPages" style="margin-left:14px;color:var(--muted)">- estimativa: <strong>0</strong> paginas</span>
   </div>
   <div>
+    <button class="btn btn-outline" onclick="importarBookPdf()" title="Importar um book (PDF) ja gerado para incluir o PPCI">Importar Book</button>
     <button class="btn btn-outline" onclick="carregarRascunho()">Carregar Rascunho</button>
     <button class="btn btn-outline" onclick="salvarRascunho()">Salvar Rascunho</button>
 <button class="btn btn-outline" onclick="abrirPreview()">Pre-visualizar</button>
@@ -502,6 +531,7 @@
 
 <script src="../Controller/main.js"></script>
 <script src="../Controller/draft.js"></script>
+<script src="../Controller/ppci.js"></script>
 <script>
 (function(){
   const PROJETOS = [

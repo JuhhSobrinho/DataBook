@@ -7,7 +7,7 @@ async function getAsset(cat){
   }
   return ASSETS_CACHE[cat];
 }
-const STATE = { uploads: {}, uploadNames: {}, logoCliente: null, logoClienteType: null, fotoAntes: null, fotoAntesType: null, fotoDepois: null, fotoDepoisType: null, assinatura: null, assinaturaType: null };
+const STATE = { uploads: {}, uploadNames: {}, logoCliente: null, logoClienteType: null, fotoAntes: null, fotoAntesType: null, fotoDepois: null, fotoDepoisType: null, assinatura: null, assinaturaType: null, bookBase: null, bookBaseNome: null, ppci: null };
 
 function b64ToBytes(b64){
   const bin = atob(b64);
@@ -97,6 +97,7 @@ setupUpload('relFile','relZone','relName','rel');
 setupUpload('rdiFile','rdiZone','rdiName','rdi');
 setupUpload('memFile','memZone','memName','mem');
 setupUpload('arptFile','arptZone','arptName','arpt');
+setupUpload('rdePpciFile','rdePpciZone','rdePpciName','rdePpci');
 
 $('logoCliente').addEventListener('change', async ()=>{
   const f = $('logoCliente').files[0];
@@ -282,7 +283,7 @@ document.querySelectorAll('.nav-link').forEach(a=>{
 });
 updateStatus();
 
-const { PDFDocument, StandardFonts, rgb, degrees, PDFName, PDFBool } = PDFLib;
+const { PDFDocument, StandardFonts, rgb, degrees, PDFName, PDFBool, PDFNumber } = PDFLib;
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 const MARGIN = 50;
@@ -321,16 +322,20 @@ async function gerarPDF(){
     // e o editor trabalham sempre com as paginas em qualidade total.
     bytes = await comprimirDatabookFinal(bytes);
 
+    // Anexa ao PDF os dados do formulario (sem os PDFs enviados) — e o que permite
+    // importar este book depois, para gerar o complemento PPCI (Controller/ppci.js).
+    bytes = await embutirDadosNoPdf(bytes);
+
     const url = URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
     const a = document.createElement('a');
     a.href = url;
-    a.download = getDocNumero() + '.pdf';
+    a.download = getDocNumero() + (STATE.bookBase ? ' PPCI' : '') + '.pdf';
     a.click();
     URL.revokeObjectURL(url);
 
-    // Certificado separado (2 páginas)
+    // Certificado separado (2 páginas; no complemento PPCI: composito + PPCI, 4 páginas)
     const plaqueta = (($('cgPlaqueta')||{}).value||'').trim();
-    const certNome = 'Certificado de Conformidade REP-' + (plaqueta || 'sem-plaqueta') + '.pdf';
+    const certNome = 'Certificado de Conformidade REP-' + (plaqueta || 'sem-plaqueta') + (STATE.bookBase ? ' (Composito + PPCI)' : '') + '.pdf';
     const certBlob = await montarCertificado();
     const certUrl  = URL.createObjectURL(certBlob);
     setTimeout(()=>{
@@ -961,19 +966,20 @@ async function montarCertificado(){
   const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const logo     = await getAsset('logo');
   const logoTeamPng = await pdf.embedJpg(b64ToBytes(logo));
-  await desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng);
+  if(STATE.bookBase){
+    // complemento PPCI: certificado do composito + certificado do PPCI no mesmo arquivo
+    await desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, ovCertificadoComposito());
+    await desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, ovCertificadoPpci());
+  } else {
+    await desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng);
+  }
   const bytes = await pdf.save();
   return new Blob([bytes], {type:'application/pdf'});
 }
 
-async function montarDatabook(){
-  const pdf = await PDFDocument.create();
-  const fontReg = await pdf.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const [logo, procedimentos, fichas, pda, tecnicos, idcards, coverAssets] = await Promise.all([
-    getAsset('logo'), getAsset('procedimentos'), getAsset('fichas'),
-    getAsset('pda'), getAsset('tecnicos'), getAsset('idcards'), getAsset('cover')
-  ]);
+// Embute no doc o logo TEAM e as imagens da capa (usado pela montagem normal e pelo complemento PPCI)
+async function _recursosCapa(pdf){
+  const [logo, coverAssets] = await Promise.all([getAsset('logo'), getAsset('cover')]);
   const logoTeamPng = await pdf.embedJpg(b64ToBytes(logo));
   let bgImg = null, sfImg = null, hdrImg = null, strip = [];
   try {
@@ -984,6 +990,18 @@ async function montarDatabook(){
       if(coverAssets && coverAssets[k]) strip.push(await pdf.embedPng(b64ToBytes(coverAssets[k])));
     }
   } catch(e){ console.warn('cover assets embed:', e); }
+  return { logoTeamPng, bgImg, sfImg, hdrImg, strip };
+}
+
+async function montarDatabook(){
+  if(STATE.bookBase) return montarBookPpci(); // modo "importar book" (Controller/ppci.js)
+  const pdf = await PDFDocument.create();
+  const fontReg = await pdf.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const [procedimentos, fichas, pda, tecnicos, idcards] = await Promise.all([
+    getAsset('procedimentos'), getAsset('fichas'), getAsset('pda'), getAsset('tecnicos'), getAsset('idcards')
+  ]);
+  const { logoTeamPng, bgImg, sfImg, hdrImg, strip } = await _recursosCapa(pdf);
   const docNum = getDocNumero();
   const tag = $('tagEquip').value.trim();
 
@@ -1117,6 +1135,7 @@ const COMPRESS_DPI     = 100;  // resolucao efetiva das paginas anexadas, aplica
 const COMPRESS_QUALITY = 0.45; // qualidade do JPEG re-codificado (0 a 1)
 const MAX_RENDER_PX    = 1800; // teto de pixels no maior lado do canvas de renderizacao
 const ANEXO_MARK       = 'TeamAnexo'; // chave custom gravada no dict da pagina p/ identifica-la como anexo
+const SECAO_MARK       = 'TeamSecao'; // idem, nos separadores: guarda o n da secao (usado pela importacao do book)
 
 // Toda pagina anexada (upload ou asset) e normalizada para o tamanho A4 (PAGE_W x PAGE_H),
 // com o conteudo original ajustado por contain (sem distorcer) e centralizado. Isso evita
@@ -1177,6 +1196,10 @@ async function comprimirDatabookFinal(bytes){
 
   for(let i = 0; i < srcPages.length; i++){
     const newPage = out.addPage([PAGE_W, PAGE_H]);
+
+    // preserva a marca de secao dos separadores (a importacao do book depende dela)
+    const secao = srcPages[i].node.lookup(PDFName.of(SECAO_MARK));
+    if(secao) newPage.node.set(PDFName.of(SECAO_MARK), PDFNumber.of(secao.asNumber()));
 
     if(!anexoFlags[i]){
       const emb = embPorIndice.get(i);
@@ -1471,6 +1494,7 @@ async function desenhaIndice(pdf, fontReg, fontBold, logoTeamPng, docNum){
 
 async function desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, num, titulo){
   const page = pdf.addPage([PAGE_W, PAGE_H]);
+  page.node.set(PDFName.of(SECAO_MARK), PDFNumber.of(Number(num)));
   desenhaCabecalhoRodape(page, fontReg, fontBold, logoTeamPng, docNum);
 
   // Section number + title at top-left below header, TEAM_BLUE bold
@@ -1481,10 +1505,13 @@ async function desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, num
   page.drawText(pb, {x:(PAGE_W-fontBold.widthOfTextAtSize(pb,11))/2, y:PAGE_H/2, size:11, font:fontBold, color:BLACK});
 }
 
-async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
+// ov: valores que substituem os do formulario (usado pelo complemento PPCI: data, descricao,
+// normas, PFP). Chaves = ids dos campos (cgData, cgDescricao, cgNormas, cgPfpEsp, cgPfpComp) e 'pfp'.
+async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, ov = {}){
+  const val = id => (ov[id] !== undefined ? ov[id] : (($(id)||{}).value||''));
 
   function gerarCertif(){
-    const data = $('cgData').value;
+    const data = val('cgData');
     const plaqueta = (($('cgPlaqueta')||{}).value||'').trim();
     if(!data) return plaqueta||'-';
     const [yy,mm,dd] = data.split('-');
@@ -1543,7 +1570,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   const LX = MARGIN, MX = PAGE_W/2 + 8, LEnd = PAGE_W/2 - 4, REnd = PAGE_W - MARGIN;
 
   field(page, 'Cliente:',    $('cgCliente').value,  LX, y, LEnd);
-  field(page, 'Data:',       fmtDate($('cgData').value)||'', MX, y, REnd);
+  field(page, 'Data:',       fmtDate(val('cgData'))||'', MX, y, REnd);
   y -= 19;
   field(page, 'Endereco:',   $('cgEndereco').value, LX, y, LEnd);
   field(page, 'Contrato #:', $('cgContrato').value, MX, y, REnd);
@@ -1565,7 +1592,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   const descLbW = fontBold.widthOfTextAtSize(descLabel, 9);
   page.drawText(descLabel, {x:LX, y, size:9, font:fontBold, color:BLACK});
   const descVx = LX + descLbW + 4;
-  const descLines = quebrarTexto($('cgDescricao').value||'', fontReg, 9, REnd-descVx).slice(0,2);
+  const descLines = quebrarTexto(val('cgDescricao'), fontReg, 9, REnd-descVx).slice(0,2);
   if(descLines[0]) page.drawText(descLines[0], {x:descVx, y, size:9, font:fontReg, color:BLACK});
   page.drawLine({start:{x:descVx, y:y-2}, end:{x:REnd, y:y-2}, thickness:0.4, color:BLACK});
   if(descLines[1]){
@@ -1607,7 +1634,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
     ['PRESSÃO OPERAÇÃO:',              $('cgPOper').value||''],
     ['TEMPERATURA DE PROJETO:',        ($('cgTProj').value ? $('cgTProj').value+' C' : '')],
     ['TEMPERATURA DE OPERAÇÃO:',       ($('cgTOper').value ? $('cgTOper').value+' C' : '')],
-    ['NORMAS APLICÁVEIS:',             $('cgNormas').value||''],
+    ['NORMAS APLICÁVEIS:',             val('cgNormas')],
     ['ENQUADRAMENTO NA CERTIFICADORA ABS:', (($('cgAbsText')||{}).value)||''],
     ['VIDA ÚTIL DO REPARO PROJETADO:', ($('cgVida').value ? $('cgVida').value+' anos' : '')],
   ];
@@ -1624,11 +1651,11 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng){
   y -= 2;
 
   // PFP e' automatico: decorre da selecao do Certificado Jotun Jotachar na Ficha Tecnica
-  const pfp = document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]:checked') ? 'SIM' : 'NAO';
+  const pfp = ov.pfp || (document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]:checked') ? 'SIM' : 'NAO');
   const simMark = pfp==='SIM' ? '( X )' : '(   )';
   const naoMark = pfp!=='SIM' ? '( X )' : '(   )';
-  const esp  = ($('cgPfpEsp')||{}).value||'';
-  const comp = ($('cgPfpComp')||{}).value||'';
+  const esp  = val('cgPfpEsp');
+  const comp = val('cgPfpComp');
   const espTxt  = esp  ? esp+' mm'  : '';
   const compTxt = comp ? comp+' mm' : '';
   const pfpTxt = 'FOI REALIZADO APLICAÇÃO DE PFP:   '+simMark+' SIM   '+naoMark+' NÃO        ESPESSURA: '+espTxt+'        COMP.: '+compTxt;

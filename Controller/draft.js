@@ -7,7 +7,9 @@ function bufToB64(buffer){
   return btoa(bin);
 }
 
-function coletarRascunho(){
+// opts.semUploads: omite os PDFs enviados (usado ao embutir os dados no book gerado, onde os
+// anexos ja sao paginas do proprio PDF — so os dados do formulario precisam ir junto)
+function coletarRascunho(opts = {}){
   const tecnicos = [];
   document.querySelectorAll('.tec-check:checked').forEach(cb => {
     const nome = cb.dataset.nome;
@@ -17,8 +19,10 @@ function coletarRascunho(){
   });
 
   const uploads = {}, uploadNames = {};
-  for(const [key, buf] of Object.entries(STATE.uploads)){
-    if(buf){ uploads[key] = bufToB64(buf); uploadNames[key] = STATE.uploadNames[key]||key+'.pdf'; }
+  if(!opts.semUploads){
+    for(const [key, buf] of Object.entries(STATE.uploads)){
+      if(buf){ uploads[key] = bufToB64(buf); uploadNames[key] = STATE.uploadNames[key]||key+'.pdf'; }
+    }
   }
 
   return {
@@ -111,7 +115,7 @@ function carregarRascunho(){
   input.click();
 }
 
-async function restaurarRascunho(estado){
+async function restaurarRascunho(estado, opts = {}){
   // Campos de texto
   for(const [id, val] of Object.entries(estado.campos||{})){
     const el=$(id); if(el) el.value=val;
@@ -199,5 +203,5 @@ async function restaurarRascunho(estado){
   }
 
   updateStatus();
-  alert('Rascunho carregado com sucesso!');
+  if(!opts.silencioso) alert('Rascunho carregado com sucesso!');
 }

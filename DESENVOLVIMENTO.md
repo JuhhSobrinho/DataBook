@@ -38,6 +38,7 @@ Bibliotecas de terceiros (carregadas via CDN em `View/index-form-databook.html`)
 | [View/styles/style-global.css](View/styles/style-global.css) | Tema claro/escuro, componentes visuais (steps, choice-list, modal, drawer de miniaturas) |
 | [Controller/main.js](Controller/main.js) | ~1630 linhas. Tudo: estado (`STATE`), assets, geração do PDF, preview, editor de páginas, compressão de anexos |
 | [Controller/draft.js](Controller/draft.js) | Exportar/importar o preenchimento do formulário como `.json` (rascunho) |
+| [Controller/ppci.js](Controller/ppci.js) | Importar um book (PDF) já gerado e montar o complemento PPCI ([seção 15](#15-importar-book-complemento-ppci)) |
 | [Model/assets-*.json](Model/) | Cada arquivo é `{"<categoria>": {...}}` com PDFs/imagens em base64 puro (sem prefixo `data:`) |
 | [manifest.json](manifest.json) | Manifesto PWA (nome, ícones, cor de tema, `display: standalone`) |
 | [sw.js](sw.js) | Service Worker — estratégia de cache offline |
@@ -331,7 +332,40 @@ Ou seja: **toda vez que alterar algo em `CORE_ASSETS` (html/css/js) ou quiser fo
 
 ---
 
-## 15. Limitações conhecidas
+## 15. Importar book (complemento PPCI)
+
+Há casos em que o reparo é feito primeiro com compósito e o PPCI só é aplicado depois. Nesse caso gera-se um **segundo book** com os mesmos dados do primeiro, mais um RDE (da aplicação do PPCI) e mais um certificado de conformidade (mesmos dados, mas com PPCI). O botão **Importar Book** (rodapé do formulário) faz isso a partir do PDF do book original. Tudo está em [Controller/ppci.js](Controller/ppci.js).
+
+**Como funciona (duas peças):**
+
+1. **Todo book gerado leva os dados do formulário em anexo.** No fim de `gerarPDF()`, `embutirDadosNoPdf()` anexa ao PDF o arquivo `databook-dados.json` (API `attach` do pdf-lib) com o mesmo conteúdo do rascunho **sem os PDFs enviados** (`coletarRascunho({semUploads:true})` — os anexos já são páginas do próprio PDF). Pesa em geral ~1MB (logo, fotos e assinatura em base64). `lerDadosDoPdf()` lê esse anexo de volta pelo PDF.js (`getAttachments()`).
+2. **Cada separador de seção carrega uma marca com o nº da seção** (`SECAO_MARK`, gravada em `desenhaSeparador`; mesmo mecanismo da `ANEXO_MARK`, [seção 8](#8-tamanho-de-página-a4-e-compressão-dos-anexos)). `comprimirDatabookFinal()` copia essa marca para as páginas novas que cria, senão ela se perderia na compressão. A importação usa a marca para achar onde as seções 3 e 9 terminam.
+
+**Fluxo da importação (`importarBookPdf`):** lê o anexo → `restaurarRascunho(estado, {silencioso:true})` → guarda o PDF em `STATE.bookBase` → `_ativarModoPpci()` (atualiza a data da capa para hoje, mostra o painel "Complemento PPCI" e esconde as etapas que não se aplicam via `body.modo-ppci`, em `style-global.css`). Daí em diante `montarDatabook()` (pré-visualização, miniaturas e geração final) desvia para `montarBookPpci()`, que monta:
+
+| Parte | Origem |
+|---|---|
+| Capa | **Regenerada** (`desenhaCapa`) com a data nova — os outros dados vêm do anexo |
+| Contracapa até o fim da seção 3 | Páginas copiadas do book importado |
+| RDE do PPCI | Upload novo (`STATE.uploads.rdePpci`), logo após o RDE do compósito |
+| Seções 4 a 9 | Copiadas do book importado (inclui o certificado do compósito original) |
+| Certificado PPCI | **Gerado** (`desenhaCertificadoGarantia` com `ovCertificadoPpci()`), fim da seção 9 |
+| Seção 10 em diante | Copiadas do book importado |
+
+**Certificado PPCI** = mesmos dados do certificado do compósito, com: data = campo manual `cgDataPpci` (data do RDE com PPCI; muda também o nº do certificado), PFP = SIM com espessura/comprimento próprios (`ppciEsp`/`ppciComp`), descrição com a frase do Jotachar (`ppciDesc`, pré-preenchida por `_descricaoPpci`), **normas aplicáveis em branco** e ABS mantido. Para isso `desenhaCertificadoGarantia` ganhou o parâmetro `ov`: valores que substituem os do formulário (`cgData`, `cgDescricao`, `cgNormas`, `cgPfpEsp`, `cgPfpComp`, `pfp`).
+
+**Downloads no modo PPCI:** o book sai como `<nº do documento> PPCI.pdf` (para não sobrescrever o do compósito) e o certificado avulso como um único PDF de 4 páginas (compósito + PPCI). `montarCertificado()` usa `ovCertificadoComposito()` para o primeiro — um *snapshot* de `cgData`/`cgDescricao` tirado na importação (`STATE.ppci`), porque editar a data da capa sincroniza `cgData` automaticamente e o certificado do compósito não pode mudar.
+
+**Limitações:**
+- Só books gerados **depois** desta funcionalidade têm o anexo e podem ser importados; os antigos mostram um aviso.
+- O RDE do PPCI e a data do RDE com PPCI são obrigatórios — sem eles `montarBookPpci()` lança erro (aparece como alerta na pré-visualização/geração).
+- A capa é regenerada a partir dos dados: edições feitas à mão na capa pelo editor de sobreposição não são preservadas. As demais páginas, inclusive edições/rotações feitas no book original, são mantidas.
+- Os cabeçalhos das páginas já geradas (separadores etc.) mantêm o número do documento do book importado; se mudar o número do documento no modo PPCI, só a capa muda.
+- O Certificado Jotun Jotachar (seção 6) e os ID Cards (seção 10) **não** são adicionados automaticamente ao book PPCI.
+
+---
+
+## 16. Limitações conhecidas
 
 - A estimativa de páginas em `updateStatus()` é uma heurística fixa por seção (ex.: "+4 páginas por ficha marcada"), não conta as páginas reais dos PDFs anexados — pode divergir bastante do total real.
 - `anexarPdf` rasteriza uniformemente todo anexo (uploads e assets), mesmo documentos nativamente vetoriais — não existe hoje uma forma de marcar um anexo específico como "manter pesquisável, não comprimir".
