@@ -178,6 +178,8 @@ async function restaurarRascunho(estado, opts = {}){
     STATE.logoClienteType=estado.logoClienteType;
     $('logoClienteName').textContent='[OK] logo-cliente';
     $('logoClienteZone').classList.add('has-file');
+    STATE.logoClientePadrao=false;
+    atualizarPreviewLogoCliente();
   }
 
   // Assinatura
@@ -203,5 +205,6 @@ async function restaurarRascunho(estado, opts = {}){
   }
 
   updateStatus();
+  atualizarCamposObrigatorios();
   if(!opts.silencioso) alert('Rascunho carregado com sucesso!');
 }

@@ -121,6 +121,7 @@ Estrutura por arquivo:
 | `assets-idcards.json` | `{"idcards": {"<chave>": {"pdf": "<base64>"}}}` | Carteirinhas/ID cards Jotachar, casadas por nome com `tecnicos` |
 | `assets-cover.json` | `{"cover": {"background", "safetyfirst", "teamHeader", "img1".."img5"}}` | Imagens da capa (JPEG/PNG base64) |
 | `assets-logo.json` | `{"logo": "<jpeg base64>"}` | Logo TEAM, usado no cabeçalho de toda página gerada |
+| `assets-clientes.json` | `{"clientes": {"PETROBRAS": "<png base64>"}}` | Logos de clientes. A da Petrobras é a logo **padrão** da capa (`usarLogoPadrao()` em `main.js`, carregada na abertura do formulário se nenhuma logo foi restaurada). Para outro cliente o usuário importa o arquivo na etapa 1 (`STATE.logoCliente`); o botão "Voltar para a logo da Petrobras" desfaz |
 
 Todos os valores de PDF são **base64 puro**, sem prefixo `data:application/pdf;base64,`. Decodifique com o helper já existente `b64ToBytes()` ([main.js:12](Controller/main.js#L12)).
 
@@ -313,6 +314,7 @@ Ou seja: **toda vez que alterar algo em `CORE_ASSETS` (html/css/js) ou quiser fo
 - `$('id')` é atalho para `document.getElementById('id')` ([main.js:43](Controller/main.js#L43)) — use-o em vez de `document.getElementById` em código novo, por consistência.
 - Nomenclatura, comentários e mensagens de erro do projeto são em português — mantenha o padrão em código novo.
 - Não há linter/formatter configurado — siga o estilo já presente no arquivo (ponto e vírgula, aspas simples, chaves na mesma linha).
+- **Campos que não podem passar batido** (hoje `cgCliente` e `cgData`, lista `CAMPOS_ALERTA` em `main.js`) não têm preenchimento automático e recebem a classe `campo-vazio` (borda/fundo vermelho, em `style-global.css`) enquanto vazios. Para destacar outro campo, basta incluir o id em `CAMPOS_ALERTA`. A data do certificado **não** acompanha a data da capa: é a data do RDE e é digitada manualmente.
 
 ---
 

@@ -162,12 +162,16 @@
     </div>
     <div class="field" style="margin-top:6px">
       <label>Logo do cliente (JPEG/PNG)</label>
-      <label class="upload-zone" id="logoClienteZone">
-        <div class="icon">[+]</div>
-        <div class="text">Clique para anexar a logomarca do cliente</div>
-        <div class="filename" id="logoClienteName"></div>
-        <input type="file" id="logoCliente" accept="image/jpeg,image/png">
-      </label>
+      <div class="logo-cliente-row">
+        <div class="logo-cliente-preview"><img id="logoClientePreview" alt="Logo do cliente"></div>
+        <label class="upload-zone" id="logoClienteZone">
+          <div class="icon">[+]</div>
+          <div class="text">Outro cliente? Clique para importar a logomarca</div>
+          <div class="filename" id="logoClienteName">Petrobras (padrao)</div>
+          <input type="file" id="logoCliente" accept="image/jpeg,image/png">
+        </label>
+      </div>
+      <button type="button" class="btn btn-outline" id="btnLogoPadrao" onclick="usarLogoPadrao()" style="display:none;margin-top:6px;font-size:12px">Voltar para a logo da Petrobras</button>
     </div>
   </section>
 
@@ -633,8 +637,8 @@
     // # PO (SS): "SS-52/2026"
     if (doc4 && doc5) sincronizar('cgPO', `SS-${doc4}/${doc5}`);
 
-    // Data da capa → data do certificado
-    if (data) sincronizar('cgData', data);
+    // A data do certificado NAO acompanha a data da capa: e' a data do RDE e e' preenchida
+    // manualmente (campo destacado em vermelho enquanto vazio).
 
     atualizarDescricao();
   }

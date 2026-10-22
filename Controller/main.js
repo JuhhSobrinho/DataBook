@@ -7,7 +7,7 @@ async function getAsset(cat){
   }
   return ASSETS_CACHE[cat];
 }
-const STATE = { uploads: {}, uploadNames: {}, logoCliente: null, logoClienteType: null, fotoAntes: null, fotoAntesType: null, fotoDepois: null, fotoDepoisType: null, assinatura: null, assinaturaType: null, bookBase: null, bookBaseNome: null, ppci: null };
+const STATE = { uploads: {}, uploadNames: {}, logoCliente: null, logoClienteType: null, fotoAntes: null, fotoAntesType: null, fotoDepois: null, fotoDepoisType: null, assinatura: null, assinaturaType: null, bookBase: null, bookBaseNome: null, ppci: null, logoClientePadrao: false };
 
 function b64ToBytes(b64){
   const bin = atob(b64);
@@ -106,10 +106,46 @@ $('logoCliente').addEventListener('change', async ()=>{
   const {buffer, type} = await compressImageFile(f, {maxDim:900, mime, quality:0.85});
   STATE.logoCliente = buffer;
   STATE.logoClienteType = type;
+  STATE.logoClientePadrao = false;
   $('logoClienteName').textContent = '[OK] ' + f.name;
   $('logoClienteZone').classList.add('has-file');
+  atualizarPreviewLogoCliente();
   updateStatus();
 });
+
+// Logo padrao = Petrobras (Model/assets-clientes.json). soSeVazio: so aplica se nenhuma logo foi
+// definida ainda (evita sobrescrever uma logo restaurada de rascunho/book importado).
+async function usarLogoPadrao(soSeVazio){
+  if(soSeVazio && STATE.logoCliente) return;
+  const clientes = await getAsset('clientes');
+  if(soSeVazio && STATE.logoCliente) return;
+  STATE.logoCliente = b64ToBytes(clientes.PETROBRAS).buffer;
+  STATE.logoClienteType = 'image/png';
+  STATE.logoClientePadrao = true;
+  $('logoCliente').value = '';
+  $('logoClienteName').textContent = 'Petrobras (padrao)';
+  $('logoClienteZone').classList.remove('has-file');
+  atualizarPreviewLogoCliente();
+}
+function atualizarPreviewLogoCliente(){
+  const img = $('logoClientePreview');
+  if(!img) return;
+  $('btnLogoPadrao').style.display = STATE.logoClientePadrao ? 'none' : '';
+  if(!STATE.logoCliente){ img.style.display = 'none'; return; }
+  const url = URL.createObjectURL(new Blob([STATE.logoCliente], {type: STATE.logoClienteType || 'image/png'}));
+  img.onload = () => URL.revokeObjectURL(url);
+  img.src = url;
+  img.style.display = 'block';
+}
+usarLogoPadrao(true);
+
+// Cliente e data do certificado: sem preenchimento automatico e em vermelho enquanto vazios
+const CAMPOS_ALERTA = ['cgCliente','cgData'];
+function atualizarCamposObrigatorios(){
+  CAMPOS_ALERTA.forEach(id => $(id).classList.toggle('campo-vazio', !$(id).value.trim()));
+}
+CAMPOS_ALERTA.forEach(id => ['input','change'].forEach(ev => $(id).addEventListener(ev, atualizarCamposObrigatorios)));
+atualizarCamposObrigatorios();
 
 function setupFoto(inputId, zoneId, nameId, stateKey, compressOpts){
   const inp = $(inputId);

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'databook-v7';
+const CACHE_NAME = 'databook-v8';
 const BASE = self.registration.scope;
 
 // Assets principais — cacheados no install
@@ -23,6 +23,7 @@ const MODEL_ASSETS = [
   BASE + 'Model/assets-tecnicos.json',
   BASE + 'Model/assets-idcards.json',
   BASE + 'Model/assets-cover.json',
+  BASE + 'Model/assets-clientes.json',
 ];
 
 // Install: cacheia assets principais imediatamente
