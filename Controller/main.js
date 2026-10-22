@@ -327,7 +327,9 @@ const TEAM_BLUE = rgb(0 / 255, 94 / 255, 184 / 255);
 const TEAM_GRAY = rgb(0.23, 0.27, 0.32);
 const BLACK = rgb(0, 0, 0);
 
-async function gerarPDF() {
+// semConfirmar: quem chama ja perguntou sobre as pendencias (ver gerarPDFDoPreview)
+async function gerarPDF(semConfirmar) {
+  if (semConfirmar !== true && !(await confirmarPendencias())) return;
   const btn = $('btnGerar2');
   btn.disabled = true;
   const orig = btn.innerHTML;
@@ -992,8 +994,10 @@ function toggleFullscreen() {
 
 async function gerarPDFDoPreview() {
   // Gera o PDF direto do preview sem precisar fechar a modal
+  // (pergunta sobre pendencias antes de fechar, para o usuario voltar ao preview se cancelar)
+  if (!(await confirmarPendencias())) return;
   fecharPreview();
-  await gerarPDF();
+  await gerarPDF(true);
 }
 
 async function montarCertificado() {

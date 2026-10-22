@@ -209,6 +209,38 @@ section.step {
     box-shadow: 0 1px 4px rgba(0,0,0,.07)
 }
 
+/* Confirmacao ao gerar o PDF com itens pendentes (acima do modal de pre-visualizacao, z-index 200) */
+.modal-pendencias { z-index: 400 }
+.pend-box {
+    background: var(--card);
+    border-radius: 10px;
+    max-width: 520px;
+    width: 100%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 22px 24px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .4)
+}
+.pend-box h3 { margin: 0; font-size: 17px; color: #d32f2f }
+.pend-box p { margin: 0; font-size: 13px; color: var(--muted) }
+#pendLista { margin: 0; padding-left: 0; list-style: none; overflow-y: auto; font-size: 13.5px }
+#pendLista li { padding: 5px 0; border-bottom: 1px solid var(--border-strong) }
+#pendLista li:last-child { border-bottom: none }
+#pendLista .pend-etapa {
+    display: inline-block;
+    min-width: 162px;
+    margin-right: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    color: var(--team-blue)
+}
+#pendLista li.bloqueia { color: #d32f2f; font-weight: 600 }
+.pend-acoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px }
+
 /* Aviso de nova versao do app (Service Worker) */
 .aviso-atualizacao {
     position: fixed;

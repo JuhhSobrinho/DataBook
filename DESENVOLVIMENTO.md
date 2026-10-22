@@ -39,6 +39,7 @@ Bibliotecas de terceiros (carregadas via CDN em `View/index-form-databook.html`)
 | [Controller/main.js](Controller/main.js) | ~1630 linhas. Tudo: estado (`STATE`), assets, geração do PDF, preview, editor de páginas, compressão de anexos |
 | [Controller/draft.js](Controller/draft.js) | Exportar/importar o preenchimento do formulário como `.json` (rascunho) |
 | [Controller/ppci.js](Controller/ppci.js) | Importar um book (PDF) já gerado e montar o complemento PPCI ([seção 15](#15-importar-book-complemento-ppci)) |
+| [Controller/pendencias.js](Controller/pendencias.js) | Aviso ao gerar o PDF com itens não preenchidos ([seção 17](#17-aviso-de-itens-pendentes-ao-gerar-o-pdf)) |
 | [Model/assets-*.json](Model/) | Cada arquivo é `{"<categoria>": {...}}` com PDFs/imagens em base64 puro (sem prefixo `data:`) |
 | [manifest.json](manifest.json) | Manifesto PWA (nome, ícones, cor de tema, `display: standalone`) |
 | [sw.js](sw.js) | Service Worker — estratégia de cache offline |
@@ -377,3 +378,15 @@ Há casos em que o reparo é feito primeiro com compósito e o PPCI só é aplic
 - A estimativa de páginas em `updateStatus()` é uma heurística fixa por seção (ex.: "+4 páginas por ficha marcada"), não conta as páginas reais dos PDFs anexados — pode divergir bastante do total real.
 - `anexarPdf` rasteriza uniformemente todo anexo (uploads e assets), mesmo documentos nativamente vetoriais — não existe hoje uma forma de marcar um anexo específico como "manter pesquisável, não comprimir".
 - Não há testes automatizados no projeto — qualquer mudança em `montarDatabook`/`anexarPdf` deve ser validada gerando um PDF de verdade e conferindo tamanho/legibilidade manualmente.
+
+---
+
+## 17. Aviso de itens pendentes ao gerar o PDF
+
+Ao clicar em **Gerar PDF Final** (ou em "Gerar PDF" dentro da pré-visualização), `gerarPDF()` chama `confirmarPendencias()` ([Controller/pendencias.js](Controller/pendencias.js)) antes de montar o book. Se algo não estiver preenchido, abre o modal `#modalPendencias` com a lista (etapa + item) e dois botões: **Cancelar** (volta ao formulário; é o botão focado, então Enter não gera sem querer; Esc e clique no fundo também cancelam) e **Gerar PDF mesmo assim** (segue a geração normalmente, com os itens pendentes em branco ou sem os documentos).
+
+- **O que é checado:** tudo está na função `listarPendencias()`, uma lista de `add(etapa, item, estaPendente)`. Para incluir ou retirar um item da checagem, edite só ali. Deliberadamente **não** são checados: "Revisado por" (preenchido pelo revisor no preview), o Registro de Instalação (opcional) e campos que já vêm com valor padrão (endereço, normas, vida útil, garantia, ABS, cargo).
+- **Regras condicionais:** a espessura/comprimento do PFP só são cobrados se o Certificado Jotachar estiver selecionado (PFP = SIM); técnico marcado **sem** certificado escolhido é listado, porque a geração o ignora em silêncio.
+- **Modo PPCI (importar book):** a lista é outra (RDE do PPCI, data do RDE com PPCI, PFP, descrição, data da capa, cliente e data do certificado). O RDE do PPCI e a data do RDE com PPCI são **bloqueantes** (`bloqueia`): o modal mostra "Faltam itens obrigatórios" e só oferece "Voltar e preencher", já que sem eles `montarBookPpci()` não consegue montar o book.
+- **Preview:** `gerarPDFDoPreview()` pergunta *antes* de fechar o preview (se o usuário cancelar, continua nele) e depois chama `gerarPDF(true)` para não perguntar duas vezes.
+- A pré-visualização (botão "Pre-visualizar") não pergunta nada: só a geração final.
