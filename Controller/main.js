@@ -1,7 +1,7 @@
 ﻿const ASSETS_CACHE = {};
-async function getAsset(cat){
-  if(!ASSETS_CACHE[cat]){
-    const r = await fetch('../Model/assets-'+cat+'.json');
+async function getAsset(cat) {
+  if (!ASSETS_CACHE[cat]) {
+    const r = await fetch('../Model/assets-' + cat + '.json');
     const d = await r.json();
     ASSETS_CACHE[cat] = d[cat];
   }
@@ -9,21 +9,21 @@ async function getAsset(cat){
 }
 const STATE = { uploads: {}, uploadNames: {}, logoCliente: null, logoClienteType: null, fotoAntes: null, fotoAntesType: null, fotoDepois: null, fotoDepoisType: null, assinatura: null, assinaturaType: null, bookBase: null, bookBaseNome: null, ppci: null, logoClientePadrao: false };
 
-function b64ToBytes(b64){
+function b64ToBytes(b64) {
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes;
 }
-async function fileToBuffer(file){
-  return new Promise(r=>{
+async function fileToBuffer(file) {
+  return new Promise(r => {
     const fr = new FileReader();
-    fr.onload = ()=>r(fr.result);
+    fr.onload = () => r(fr.result);
     fr.readAsArrayBuffer(file);
   });
 }
-async function compressImageFile(file, {maxDim=1600, mime='image/jpeg', quality=0.82} = {}){
-  try{
+async function compressImageFile(file, { maxDim = 1600, mime = 'image/jpeg', quality = 0.82 } = {}) {
+  try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
     const w = Math.max(1, Math.round(bitmap.width * scale));
@@ -31,32 +31,32 @@ async function compressImageFile(file, {maxDim=1600, mime='image/jpeg', quality=
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
-    if(bitmap.close) bitmap.close();
+    if (bitmap.close) bitmap.close();
     const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
-    if(!blob) throw new Error('toBlob falhou');
+    if (!blob) throw new Error('toBlob falhou');
     return { buffer: await blob.arrayBuffer(), type: mime };
-  }catch(e){
+  } catch (e) {
     console.warn('compressImageFile: usando arquivo original sem compactar', e);
     return { buffer: await fileToBuffer(file), type: file.type };
   }
 }
-function $(id){return document.getElementById(id)}
-function fmtDate(iso){
-  if(!iso) return '';
-  const [y,m,d]=iso.split('-');
-  return d+'/'+m+'/'+y;
+function $(id) { return document.getElementById(id) }
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return d + '/' + m + '/' + y;
 }
-function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function cssEscape(s){return s.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}
-function normaliza(s){return s.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim()}
+function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) }
+function cssEscape(s) { return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') }
+function normaliza(s) { return s.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim() }
 
-function updateDocPreview(){
+function updateDocPreview() {
   const numero = getDocNumero();
   $('docPreview').textContent = numero;
   const hdr = $('headerDocNumero');
-  if(hdr) hdr.textContent = numero;
+  if (hdr) hdr.textContent = numero;
 }
-const DOC_FIELDS = ['doc1','doc2','doc3','doc4','doc5'];
+const DOC_FIELDS = ['doc1', 'doc2', 'doc3', 'doc4', 'doc5'];
 DOC_FIELDS.forEach(id => $(id).addEventListener('input', updateDocPreview));
 
 // Auto-avanca para o proximo campo do numero do documento ao preencher o campo atual
@@ -65,13 +65,13 @@ DOC_FIELDS.forEach((id, i) => {
   const el = $(id);
   el.addEventListener('input', () => {
     if (el.value.length >= el.maxLength && i < DOC_FIELDS.length - 1) {
-      $(DOC_FIELDS[i+1]).focus();
+      $(DOC_FIELDS[i + 1]).focus();
     }
   });
   el.addEventListener('keydown', e => {
     if (e.key === 'Backspace' && !el.value && i > 0) {
       e.preventDefault(); // sem isso o backspace tambem apaga um char do campo anterior
-      $(DOC_FIELDS[i-1]).focus();
+      $(DOC_FIELDS[i - 1]).focus();
     }
   });
 });
@@ -79,10 +79,10 @@ DOC_FIELDS.forEach((id, i) => {
 updateDocPreview();
 $('capaData').valueAsDate = new Date();
 
-function setupUpload(inputId, zoneId, nameId, stateKey){
+function setupUpload(inputId, zoneId, nameId, stateKey) {
   const inp = $(inputId), zone = $(zoneId), nameLbl = $(nameId);
-  inp.addEventListener('change', async ()=>{
-    if(!inp.files[0]) return;
+  inp.addEventListener('change', async () => {
+    if (!inp.files[0]) return;
     const buf = await fileToBuffer(inp.files[0]);
     STATE.uploads[stateKey] = buf;
     STATE.uploadNames[stateKey] = inp.files[0].name;
@@ -91,19 +91,19 @@ function setupUpload(inputId, zoneId, nameId, stateKey){
     updateStatus();
   });
 }
-setupUpload('ssFile','ssZone','ssName','ss');
-setupUpload('rdoFile','rdoZone','rdoName','rdo');
-setupUpload('relFile','relZone','relName','rel');
-setupUpload('rdiFile','rdiZone','rdiName','rdi');
-setupUpload('memFile','memZone','memName','mem');
-setupUpload('arptFile','arptZone','arptName','arpt');
-setupUpload('rdePpciFile','rdePpciZone','rdePpciName','rdePpci');
+setupUpload('ssFile', 'ssZone', 'ssName', 'ss');
+setupUpload('rdoFile', 'rdoZone', 'rdoName', 'rdo');
+setupUpload('relFile', 'relZone', 'relName', 'rel');
+setupUpload('rdiFile', 'rdiZone', 'rdiName', 'rdi');
+setupUpload('memFile', 'memZone', 'memName', 'mem');
+setupUpload('arptFile', 'arptZone', 'arptName', 'arpt');
+setupUpload('rdePpciFile', 'rdePpciZone', 'rdePpciName', 'rdePpci');
 
-$('logoCliente').addEventListener('change', async ()=>{
+$('logoCliente').addEventListener('change', async () => {
   const f = $('logoCliente').files[0];
-  if(!f) return;
+  if (!f) return;
   const mime = (f.type === 'image/jpeg' || f.type === 'image/jpg') ? 'image/jpeg' : 'image/png';
-  const {buffer, type} = await compressImageFile(f, {maxDim:900, mime, quality:0.85});
+  const { buffer, type } = await compressImageFile(f, { maxDim: 900, mime, quality: 0.85 });
   STATE.logoCliente = buffer;
   STATE.logoClienteType = type;
   STATE.logoClientePadrao = false;
@@ -115,10 +115,10 @@ $('logoCliente').addEventListener('change', async ()=>{
 
 // Logo padrao = Petrobras (Model/assets-clientes.json). soSeVazio: so aplica se nenhuma logo foi
 // definida ainda (evita sobrescrever uma logo restaurada de rascunho/book importado).
-async function usarLogoPadrao(soSeVazio){
-  if(soSeVazio && STATE.logoCliente) return;
+async function usarLogoPadrao(soSeVazio) {
+  if (soSeVazio && STATE.logoCliente) return;
   const clientes = await getAsset('clientes');
-  if(soSeVazio && STATE.logoCliente) return;
+  if (soSeVazio && STATE.logoCliente) return;
   STATE.logoCliente = b64ToBytes(clientes.PETROBRAS).buffer;
   STATE.logoClienteType = 'image/png';
   STATE.logoClientePadrao = true;
@@ -127,12 +127,12 @@ async function usarLogoPadrao(soSeVazio){
   $('logoClienteZone').classList.remove('has-file');
   atualizarPreviewLogoCliente();
 }
-function atualizarPreviewLogoCliente(){
+function atualizarPreviewLogoCliente() {
   const img = $('logoClientePreview');
-  if(!img) return;
+  if (!img) return;
   $('btnLogoPadrao').style.display = STATE.logoClientePadrao ? 'none' : '';
-  if(!STATE.logoCliente){ img.style.display = 'none'; return; }
-  const url = URL.createObjectURL(new Blob([STATE.logoCliente], {type: STATE.logoClienteType || 'image/png'}));
+  if (!STATE.logoCliente) { img.style.display = 'none'; return; }
+  const url = URL.createObjectURL(new Blob([STATE.logoCliente], { type: STATE.logoClienteType || 'image/png' }));
   img.onload = () => URL.revokeObjectURL(url);
   img.src = url;
   img.style.display = 'block';
@@ -140,30 +140,30 @@ function atualizarPreviewLogoCliente(){
 usarLogoPadrao(true);
 
 // Cliente e data do certificado: sem preenchimento automatico e em vermelho enquanto vazios
-const CAMPOS_ALERTA = ['cgCliente','cgData'];
-function atualizarCamposObrigatorios(){
+const CAMPOS_ALERTA = ['cgCliente', 'cgData'];
+function atualizarCamposObrigatorios() {
   CAMPOS_ALERTA.forEach(id => $(id).classList.toggle('campo-vazio', !$(id).value.trim()));
 }
-CAMPOS_ALERTA.forEach(id => ['input','change'].forEach(ev => $(id).addEventListener(ev, atualizarCamposObrigatorios)));
+CAMPOS_ALERTA.forEach(id => ['input', 'change'].forEach(ev => $(id).addEventListener(ev, atualizarCamposObrigatorios)));
 atualizarCamposObrigatorios();
 
-function setupFoto(inputId, zoneId, nameId, stateKey, compressOpts){
+function setupFoto(inputId, zoneId, nameId, stateKey, compressOpts) {
   const inp = $(inputId);
-  if(!inp) return;
-  inp.addEventListener('change', async ()=>{
+  if (!inp) return;
+  inp.addEventListener('change', async () => {
     const file = inp.files[0];
-    if(!file) return;
-    const {buffer, type} = await compressImageFile(file, compressOpts);
-    STATE[stateKey]        = buffer;
-    STATE[stateKey+'Type'] = type;
-    $(nameId).textContent  = file.name;
+    if (!file) return;
+    const { buffer, type } = await compressImageFile(file, compressOpts);
+    STATE[stateKey] = buffer;
+    STATE[stateKey + 'Type'] = type;
+    $(nameId).textContent = file.name;
     $(zoneId).classList.add('has-file');
 
     // Preview da imagem na zona de upload
     const previewId = inputId.replace('File', 'Preview');
     const prev = document.getElementById(previewId);
-    if(prev){
-      const url = URL.createObjectURL(new Blob([buffer], {type}));
+    if (prev) {
+      const url = URL.createObjectURL(new Blob([buffer], { type }));
       prev.onload = () => URL.revokeObjectURL(url);
       prev.src = url;
       prev.style.display = 'block';
@@ -171,149 +171,149 @@ function setupFoto(inputId, zoneId, nameId, stateKey, compressOpts){
     }
   });
 }
-setupFoto('fotoAntesFile','fotoAntesZone','fotoAntesName','fotoAntes', {maxDim:1600, mime:'image/jpeg', quality:0.82});
-setupFoto('fotoDepoisFile','fotoDepoisZone','fotoDepoisName','fotoDepois', {maxDim:1600, mime:'image/jpeg', quality:0.82});
-setupFoto('assinaturaFile','assinaturaZone','assinaturaName','assinatura', {maxDim:900, mime:'image/png'});
+setupFoto('fotoAntesFile', 'fotoAntesZone', 'fotoAntesName', 'fotoAntes', { maxDim: 1600, mime: 'image/jpeg', quality: 0.82 });
+setupFoto('fotoDepoisFile', 'fotoDepoisZone', 'fotoDepoisName', 'fotoDepois', { maxDim: 1600, mime: 'image/jpeg', quality: 0.82 });
+setupFoto('assinaturaFile', 'assinaturaZone', 'assinaturaName', 'assinatura', { maxDim: 900, mime: 'image/png' });
 
-function coletarRevisoes(){
-  return [...document.querySelectorAll('.revisao-row')].map(row=>({
-    num:  row.querySelector('.rev-num').value.trim(),
+function coletarRevisoes() {
+  return [...document.querySelectorAll('.revisao-row')].map(row => ({
+    num: row.querySelector('.rev-num').value.trim(),
     desc: row.querySelector('.rev-desc').value.trim(),
     data: fmtDate(row.querySelector('.rev-data').value),
-  })).filter(r=>r.num||r.desc);
+  })).filter(r => r.num || r.desc);
 }
-function adicionarRevisao(num, desc, data){
+function adicionarRevisao(num, desc, data) {
   const list = $('revisoesList');
-  const idx  = list.querySelectorAll('.revisao-row').length;
-  const row  = document.createElement('div');
+  const idx = list.querySelectorAll('.revisao-row').length;
+  const row = document.createElement('div');
   row.className = 'revisao-row';
   row.innerHTML =
-    '<input type="text"  class="rev-num"  value="'+(num||'Rev'+idx)+'" placeholder="Rev0" style="width:72px">'+
-    '<input type="text"  class="rev-desc" value="'+(desc||'')+'" placeholder="Descricao da revisao" style="flex:1">'+
-    '<input type="date"  class="rev-data" value="'+(data||'')+'" style="width:138px">'+
+    '<input type="text"  class="rev-num"  value="' + (num || 'Rev' + idx) + '" placeholder="Rev0" style="width:72px">' +
+    '<input type="text"  class="rev-desc" value="' + (desc || '') + '" placeholder="Descricao da revisao" style="flex:1">' +
+    '<input type="date"  class="rev-data" value="' + (data || '') + '" style="width:138px">' +
     '<button type="button" class="btn-icon-remove" onclick="this.parentElement.remove()" title="Remover">✕</button>';
   list.appendChild(row);
 }
-function removerRevisao(btn){ btn.closest('.revisao-row').remove(); }
+function removerRevisao(btn) { btn.closest('.revisao-row').remove(); }
 
-function updateCertifPreview(){
+function updateCertifPreview() {
   const el = $('cgCertifPreview');
-  if(!el) return;
-  const data = ($('cgData')||{}).value||'';
-  const plaqueta = (($('cgPlaqueta')||{}).value||'').trim();
-  if(data && plaqueta){
-    const [yy,mm,dd] = data.split('-');
-    el.textContent = '# Certif: '+dd+mm+yy+'-'+plaqueta;
+  if (!el) return;
+  const data = ($('cgData') || {}).value || '';
+  const plaqueta = (($('cgPlaqueta') || {}).value || '').trim();
+  if (data && plaqueta) {
+    const [yy, mm, dd] = data.split('-');
+    el.textContent = '# Certif: ' + dd + mm + yy + '-' + plaqueta;
   } else {
     el.textContent = data ? '(informe a plaqueta)' : '';
   }
 }
-['cgData','cgPlaqueta'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('input', updateCertifPreview); });
+['cgData', 'cgPlaqueta'].forEach(id => { const el = $(id); if (el) el.addEventListener('input', updateCertifPreview); });
 
-async function buildTecnicosList(){
+async function buildTecnicosList() {
   const [tecnicos, idcards] = await Promise.all([getAsset('tecnicos'), getAsset('idcards')]);
   const list = $('tecnicosList');
   list.innerHTML = '';
   const nomes = Object.keys(tecnicos).sort();
   const idkeys = Object.keys(idcards);
   const idmap = {};
-  for(const n of idkeys) idmap[normaliza(n)] = n;
-  for(const nome of nomes){
+  for (const n of idkeys) idmap[normaliza(n)] = n;
+  for (const nome of nomes) {
     const certs = tecnicos[nome];
     const certKeys = Object.keys(certs).sort();
     const idcardMatch = encontraIdcard(nome, idmap);
     const row = document.createElement('div');
     row.className = 'tecnico-row';
-    if(idcardMatch) row.classList.add('has-jotun');
+    if (idcardMatch) row.classList.add('has-jotun');
     row.dataset.nome = nome;
     let optsHtml = '<option value="">Selecione um certificado</option>';
-    for(const c of certKeys){
-      optsHtml += '<option value="'+c+'">'+c.replace('-',' Nivel ')+'</option>';
+    for (const c of certKeys) {
+      optsHtml += '<option value="' + c + '">' + c.replace('-', ' Nivel ') + '</option>';
     }
     optsHtml += '<option value="__ALL__">Todos os disponiveis</option>';
     row.innerHTML =
-      '<input type="checkbox" class="tec-check" data-nome="'+escapeHtml(nome)+'">'+
-      '<div class="nome">'+escapeHtml(nome)+'</div>'+
-      '<select class="tec-cert" data-nome="'+escapeHtml(nome)+'">'+optsHtml+'</select>'+
-      (idcardMatch ? '<label class="checkbox-inline" title="ID Card Jotachar"><input type="checkbox" class="tec-jotun" data-idcard="'+escapeHtml(idcardMatch)+'"> ID Jotachar</label>' : '');
+      '<input type="checkbox" class="tec-check" data-nome="' + escapeHtml(nome) + '">' +
+      '<div class="nome">' + escapeHtml(nome) + '</div>' +
+      '<select class="tec-cert" data-nome="' + escapeHtml(nome) + '">' + optsHtml + '</select>' +
+      (idcardMatch ? '<label class="checkbox-inline" title="ID Card Jotachar"><input type="checkbox" class="tec-jotun" data-idcard="' + escapeHtml(idcardMatch) + '"> ID Jotachar</label>' : '');
     list.appendChild(row);
-    row.querySelector('.tec-check').addEventListener('change', e=>{
+    row.querySelector('.tec-check').addEventListener('change', e => {
       row.classList.toggle('selected', e.target.checked);
       updateStatus();
     });
     row.querySelector('.tec-cert').addEventListener('change', updateStatus);
     const j = row.querySelector('.tec-jotun');
-    if(j) j.addEventListener('change', updateStatus);
+    if (j) j.addEventListener('change', updateStatus);
   }
 }
-function encontraIdcard(nome, idmap){
+function encontraIdcard(nome, idmap) {
   const n = normaliza(nome);
-  if(idmap[n]) return idmap[n];
+  if (idmap[n]) return idmap[n];
   const parts = n.split(' ');
-  const primeiro = parts[0], ultimo = parts[parts.length-1];
-  for(const k of Object.keys(idmap)){
-    if(k.includes(primeiro) && k.includes(ultimo)) return idmap[k];
-    if(primeiro.length>3 && ultimo.length>3){
+  const primeiro = parts[0], ultimo = parts[parts.length - 1];
+  for (const k of Object.keys(idmap)) {
+    if (k.includes(primeiro) && k.includes(ultimo)) return idmap[k];
+    if (primeiro.length > 3 && ultimo.length > 3) {
       const kp = k.split(' ');
-      if(kp[0] === primeiro && kp[kp.length-1] === ultimo) return idmap[k];
+      if (kp[0] === primeiro && kp[kp.length - 1] === ultimo) return idmap[k];
     }
   }
   return null;
 }
 buildTecnicosList();
 
-$('searchTec').addEventListener('input', e=>{
+$('searchTec').addEventListener('input', e => {
   const q = normaliza(e.target.value);
-  document.querySelectorAll('.tecnico-row').forEach(row=>{
+  document.querySelectorAll('.tecnico-row').forEach(row => {
     const n = normaliza(row.dataset.nome);
     row.style.display = n.includes(q) ? '' : 'none';
   });
 });
 
-function updateStatus(){
+function updateStatus() {
   let count = 0;
-  if($('capaElab').value.trim()) count++;
+  if ($('capaElab').value.trim()) count++;
   document.querySelector('aside li:nth-child(1) a').classList.toggle('done', !!$('capaElab').value.trim());
   const tag2 = !!$('tagEquip').value.trim();
-  if(tag2) count++;
+  if (tag2) count++;
   document.querySelector('aside li:nth-child(2) a').classList.toggle('done', tag2);
-  const ups = [['ss',3],['rdo',4],['rel',5],['mem',6],['arpt',10]];
-  for(const [k,n] of ups){
+  const ups = [['ss', 3], ['rdo', 4], ['rel', 5], ['mem', 6], ['arpt', 10]];
+  for (const [k, n] of ups) {
     const ok = !!STATE.uploads[k];
-    if(ok) count++;
-    document.querySelector('aside li:nth-child('+n+') a').classList.toggle('done', ok);
+    if (ok) count++;
+    document.querySelector('aside li:nth-child(' + n + ') a').classList.toggle('done', ok);
   }
   const proc = document.querySelector('input[name=proc]:checked');
-  if(proc) count++;
+  if (proc) count++;
   document.querySelector('aside li:nth-child(7) a').classList.toggle('done', !!proc);
   const fichas = document.querySelectorAll('input[name=ficha]:checked');
-  if(fichas.length) count++;
-  document.querySelector('aside li:nth-child(8) a').classList.toggle('done', fichas.length>0);
+  if (fichas.length) count++;
+  document.querySelector('aside li:nth-child(8) a').classList.toggle('done', fichas.length > 0);
   const pdas = document.querySelectorAll('input[name=pda]:checked');
-  if(pdas.length) count++;
-  document.querySelector('aside li:nth-child(9) a').classList.toggle('done', pdas.length>0);
+  if (pdas.length) count++;
+  document.querySelector('aside li:nth-child(9) a').classList.toggle('done', pdas.length > 0);
   const cgOk = $('cgCliente').value.trim() && $('cgTag').value.trim();
-  if(cgOk) count++;
+  if (cgOk) count++;
   document.querySelector('aside li:nth-child(11) a').classList.toggle('done', cgOk);
   const tec = document.querySelectorAll('.tec-check:checked');
-  if(tec.length) count++;
-  document.querySelector('aside li:nth-child(12) a').classList.toggle('done', tec.length>0);
+  if (tec.length) count++;
+  document.querySelector('aside li:nth-child(12) a').classList.toggle('done', tec.length > 0);
   $('statusCount').textContent = count;
   let pages = 3;
-  for(let i=1;i<=10;i++) pages += 1;
-  for(const k of ['ss','rdo','rel','rdi','mem','arpt']) if(STATE.uploads[k]) pages += 2;
-  if(proc) pages += 21;
+  for (let i = 1; i <= 10; i++) pages += 1;
+  for (const k of ['ss', 'rdo', 'rel', 'rdi', 'mem', 'arpt']) if (STATE.uploads[k]) pages += 2;
+  if (proc) pages += 21;
   pages += fichas.length * 4;
   pages += pdas.length * 3;
-  if(cgOk) pages += 2;
+  if (cgOk) pages += 2;
   pages += tec.length * 1.5;
   $('totalPages').innerHTML = '- estimativa: <strong>' + Math.round(pages) + '</strong> paginas';
 }
-['capaElab','tagEquip','cgCliente','cgTag'].forEach(id=>$(id).addEventListener('input', updateStatus));
-document.querySelectorAll('input[name=proc],input[name=ficha],input[name=pda]').forEach(el=>el.addEventListener('change', updateStatus));
-document.querySelectorAll('.nav-link').forEach(a=>{
-  a.addEventListener('click', e=>{
-    document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+['capaElab', 'tagEquip', 'cgCliente', 'cgTag'].forEach(id => $(id).addEventListener('input', updateStatus));
+document.querySelectorAll('input[name=proc],input[name=ficha],input[name=pda]').forEach(el => el.addEventListener('change', updateStatus));
+document.querySelectorAll('.nav-link').forEach(a => {
+  a.addEventListener('click', e => {
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
     a.classList.add('active');
   });
 });
@@ -323,16 +323,16 @@ const { PDFDocument, StandardFonts, rgb, degrees, PDFName, PDFBool, PDFNumber } 
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 const MARGIN = 50;
-const TEAM_BLUE = rgb(0/255, 94/255, 184/255);
+const TEAM_BLUE = rgb(0 / 255, 94 / 255, 184 / 255);
 const TEAM_GRAY = rgb(0.23, 0.27, 0.32);
-const BLACK = rgb(0,0,0);
+const BLACK = rgb(0, 0, 0);
 
-async function gerarPDF(){
+async function gerarPDF() {
   const btn = $('btnGerar2');
   btn.disabled = true;
   const orig = btn.innerHTML;
   btn.innerHTML = '<span class="spinner"></span> Gerando...';
-  try{
+  try {
     let bytes;
     if (_correctedBytes) {
       // Usa bytes com correções de sobreposição já aplicadas (editadas no modo edição)
@@ -346,7 +346,7 @@ async function gerarPDF(){
 
       // Passo 2: aplica remoções feitas dentro do preview (sobre o resultado do passo 1)
       if (_keptPageIndices !== null) {
-        const src = await PDFDocument.load(bytes, {ignoreEncryption: true});
+        const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
         const dst = await PDFDocument.create();
         const pages = await dst.copyPages(src, _keptPageIndices);
         pages.forEach(p => dst.addPage(p));
@@ -362,7 +362,7 @@ async function gerarPDF(){
     // importar este book depois, para gerar o complemento PPCI (Controller/ppci.js).
     bytes = await embutirDadosNoPdf(bytes);
 
-    const url = URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = getDocNumero() + (STATE.bookBase ? ' PPCI' : '') + '.pdf';
@@ -370,11 +370,11 @@ async function gerarPDF(){
     URL.revokeObjectURL(url);
 
     // Certificado separado (2 páginas; no complemento PPCI: composito + PPCI, 4 páginas)
-    const plaqueta = (($('cgPlaqueta')||{}).value||'').trim();
+    const plaqueta = (($('cgPlaqueta') || {}).value || '').trim();
     const certNome = 'Certificado de Conformidade REP-' + (plaqueta || 'sem-plaqueta') + (STATE.bookBase ? ' (Composito + PPCI)' : '') + '.pdf';
     const certBlob = await montarCertificado();
-    const certUrl  = URL.createObjectURL(certBlob);
-    setTimeout(()=>{
+    const certUrl = URL.createObjectURL(certBlob);
+    setTimeout(() => {
       const ca = document.createElement('a');
       ca.href = certUrl;
       ca.download = certNome;
@@ -383,16 +383,16 @@ async function gerarPDF(){
     }, 800);
 
     btn.innerHTML = 'OK - PDF gerado!';
-    setTimeout(()=>{btn.innerHTML = orig; btn.disabled=false;}, 2500);
-  }catch(e){
+    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2500);
+  } catch (e) {
     console.error(e);
-    alert('Erro ao gerar PDF: '+e.message);
+    alert('Erro ao gerar PDF: ' + e.message);
     btn.innerHTML = orig;
     btn.disabled = false;
   }
 }
-function getDocNumero(){
-  return 'TEAM-8104-'+($('doc1').value||'XX')+'-'+($('doc2').value||'XXXX')+'-RFE-REP-'+($('doc3').value||'XXXX')+'-SS-'+($('doc4').value||'XX')+'-'+($('doc5').value||'20XX');
+function getDocNumero() {
+  return 'TEAM-8104-' + ($('doc1').value || 'XX') + '-' + ($('doc2').value || 'XXXX') + '-RFE-REP-' + ($('doc3').value || 'XXXX') + '-SS-' + ($('doc4').value || 'XX') + '-' + ($('doc5').value || '20XX');
 }
 // Converte qualquer fonte de bytes para Uint8Array com backing buffer próprio (sem risco de detach)
 function _toU8(bytes) {
@@ -407,105 +407,105 @@ async function _aplicarDrawerMask(bytes) {
   if (!_drawerPageMask || !_drawerPageMask.some(v => !v)) return _toU8(bytes);
   const kept = _drawerPageMask.map((v, i) => v ? i : -1).filter(i => i >= 0);
   if (kept.length === 0) return _toU8(bytes);
-  const src = await PDFDocument.load(bytes, {ignoreEncryption: true});
+  const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
   const dst = await PDFDocument.create();
   const pages = await dst.copyPages(src, kept);
   pages.forEach(p => dst.addPage(p));
   return await dst.save();
 }
 
-let _previewBytes          = null;
-let _previewUrl            = null;
+let _previewBytes = null;
+let _previewUrl = null;
 let _persistedPreviewBytes = null; // estado do preview persistido entre aberturas (remoções + edições)
-let _keptPageIndices       = null; // índices das páginas mantidas após remoção DENTRO do preview
-let _thumbPanelOpen  = false; // estado do painel de miniaturas
-let _drawerPageMask  = null;  // null = todas as páginas; array de bool = seleção por página
-let _sidebarHidden   = false; // estado da sidebar de guias
+let _keptPageIndices = null; // índices das páginas mantidas após remoção DENTRO do preview
+let _thumbPanelOpen = false; // estado do painel de miniaturas
+let _drawerPageMask = null;  // null = todas as páginas; array de bool = seleção por página
+let _sidebarHidden = false; // estado da sidebar de guias
 // Editor de sobreposição
-let _editMode        = false;
-let _editTool        = 'select'; // 'select' | 'add'
-let _editPdfJsDoc    = null;
+let _editMode = false;
+let _editTool = 'select'; // 'select' | 'add'
+let _editPdfJsDoc = null;
 let _editCurrentPage = 1;
-let _editScale       = 1.5;
-let _editCorrections  = [];    // [{page,x,y,w,h,text,fontSize,color}]
-let _editPageRotations= {};   // {pageNum: rotation_degrees (0/90/180/270)}
-let _correctedBytes   = null; // bytes com correções já aplicadas
+let _editScale = 1.5;
+let _editCorrections = [];    // [{page,x,y,w,h,text,fontSize,color}]
+let _editPageRotations = {};   // {pageNum: rotation_degrees (0/90/180/270)}
+let _correctedBytes = null; // bytes com correções já aplicadas
 
 // Invalida o preview salvo quando o usuário altera dados do formulário ou sobe novos arquivos.
 // Ignora eventos originados dentro do previewModal (interações de edição/remoção de páginas).
-function _invalidarPreviewSalvo(){
-  if(!_persistedPreviewBytes && !_correctedBytes && !_keptPageIndices) return;
+function _invalidarPreviewSalvo() {
+  if (!_persistedPreviewBytes && !_correctedBytes && !_keptPageIndices) return;
   _persistedPreviewBytes = null;
-  _keptPageIndices       = null;
-  _correctedBytes        = null;
-  _editCorrections       = [];
-  _editPageRotations     = {};
+  _keptPageIndices = null;
+  _correctedBytes = null;
+  _editCorrections = [];
+  _editPageRotations = {};
   _atualizarBtnReset();
 }
 
-document.addEventListener('change', function(e){
-  if(e.target.closest('#previewModal') || e.target.closest('header')) return;
+document.addEventListener('change', function (e) {
+  if (e.target.closest('#previewModal') || e.target.closest('header')) return;
   _invalidarPreviewSalvo();
 });
-document.addEventListener('input', function(e){
-  if(e.target.closest('#previewModal') || e.target.closest('header')) return;
+document.addEventListener('input', function (e) {
+  if (e.target.closest('#previewModal') || e.target.closest('header')) return;
   _invalidarPreviewSalvo();
 });
 
-function toggleSidebar(){
+function toggleSidebar() {
   _sidebarHidden = !_sidebarHidden;
   document.body.classList.toggle('sidebar-hidden', _sidebarHidden);
 }
 
-function toggleThumbPanel(){
+function toggleThumbPanel() {
   const drawer = document.getElementById('mainThumbDrawer');
-  const btn    = document.getElementById('btnMiniaturas');
+  const btn = document.getElementById('btnMiniaturas');
   _thumbPanelOpen = !_thumbPanelOpen;
   drawer.classList.toggle('open', _thumbPanelOpen);
   if (btn) btn.classList.toggle('active', _thumbPanelOpen);
   if (_thumbPanelOpen) renderizarThumbnails();
 }
 
-async function renderizarThumbnails(){
+async function renderizarThumbnails() {
   const content = document.getElementById('mainThumbContent');
   if (!content) return;
-  if (!window.pdfjsLib){ content.innerHTML = '<p class="thumb-empty">PDF.js nao carregado.</p>'; return; }
+  if (!window.pdfjsLib) { content.innerHTML = '<p class="thumb-empty">PDF.js nao carregado.</p>'; return; }
 
   content.innerHTML = '<p class="thumb-empty">Gerando PDF...</p>';
   try {
-    const blob  = await montarDatabook();
+    const blob = await montarDatabook();
     const bytes = await blob.arrayBuffer();
-    const pdf   = await pdfjsLib.getDocument({data: new Uint8Array(bytes)}).promise;
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
     const total = pdf.numPages;
 
     // Inicializa máscara com todas as páginas marcadas
     _drawerPageMask = Array(total).fill(true);
     content.innerHTML = '';
 
-    for (let i = 1; i <= total; i++){
-      const idx      = i - 1;
-      const page     = await pdf.getPage(i);
-      const viewport = page.getViewport({scale: 0.31});
-      const canvas   = document.createElement('canvas');
-      canvas.width   = viewport.width;
-      canvas.height  = viewport.height;
-      await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
+    for (let i = 1; i <= total; i++) {
+      const idx = i - 1;
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 0.31 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
 
-      const chk      = document.createElement('input');
-      chk.type       = 'checkbox';
-      chk.className  = 'thumb-check';
-      chk.checked    = true;
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.className = 'thumb-check';
+      chk.checked = true;
 
-      const num      = document.createElement('span');
-      num.className  = 'thumb-num';
+      const num = document.createElement('span');
+      num.className = 'thumb-num';
       num.textContent = 'Pág. ' + i;
 
-      const row      = document.createElement('div');
-      row.className  = 'thumb-check-row';
+      const row = document.createElement('div');
+      row.className = 'thumb-check-row';
       row.appendChild(chk);
       row.appendChild(num);
 
-      const item     = document.createElement('div');
+      const item = document.createElement('div');
       item.className = 'thumb-item';
       item.appendChild(row);
       item.appendChild(canvas);
@@ -517,21 +517,21 @@ async function renderizarThumbnails(){
 
       content.appendChild(item);
     }
-  } catch(e){
+  } catch (e) {
     content.innerHTML = '<p class="thumb-empty">Erro ao gerar miniaturas.</p>';
     console.error('Thumbnails:', e);
   }
 }
 
-async function abrirPreview(){
-  _editPageRotations= {}; // rotações reiniciam (PDF já carregado com /Rotate correto)
+async function abrirPreview() {
+  _editPageRotations = {}; // rotações reiniciam (PDF já carregado com /Rotate correto)
   $('previewModal').classList.add('show');
   $('previewFrame').src = 'about:blank';
   $('pageList').innerHTML = '<p class="sidebar-info" style="padding:8px">Gerando...</p>';
   $('pageTotalInfo').textContent = '';
   $('btnRemovePages').disabled = true;
 
-  if(_persistedPreviewBytes){
+  if (_persistedPreviewBytes) {
     // Reutilizar estado salvo — mantém remoções e edições anteriores
     _previewBytes = _persistedPreviewBytes;
     _correctedBytes = _persistedPreviewBytes;
@@ -539,83 +539,83 @@ async function abrirPreview(){
     await _atualizarListaPaginas();
   } else {
     _keptPageIndices = null;
-    _correctedBytes  = null;
-    try{
+    _correctedBytes = null;
+    try {
       const blob = await montarDatabook();
       const rawBytes = await blob.arrayBuffer();
       _previewBytes = await _aplicarDrawerMask(rawBytes);
       _atualizarFrame();
       await _atualizarListaPaginas();
-    }catch(e){ alert('Erro: '+e.message); }
+    } catch (e) { alert('Erro: ' + e.message); }
   }
 }
 
-function _atualizarFrame(){
-  if(_previewUrl) URL.revokeObjectURL(_previewUrl);
-  _previewUrl = URL.createObjectURL(new Blob([_previewBytes], {type:'application/pdf'}));
+function _atualizarFrame() {
+  if (_previewUrl) URL.revokeObjectURL(_previewUrl);
+  _previewUrl = URL.createObjectURL(new Blob([_previewBytes], { type: 'application/pdf' }));
   $('previewFrame').src = _previewUrl;
 }
 
-async function _atualizarListaPaginas(){
-  const doc   = await PDFDocument.load(_toU8(_previewBytes), {ignoreEncryption: true});
+async function _atualizarListaPaginas() {
+  const doc = await PDFDocument.load(_toU8(_previewBytes), { ignoreEncryption: true });
   const total = doc.getPageCount();
-  const list  = $('pageList');
+  const list = $('pageList');
   list.innerHTML = '';
-  for(let i = 0; i < total; i++){
+  for (let i = 0; i < total; i++) {
     const item = document.createElement('label');
     item.className = 'page-item';
-    item.innerHTML = '<input type="checkbox" checked><span>Pág. '+(i+1)+'</span>';
+    item.innerHTML = '<input type="checkbox" checked><span>Pág. ' + (i + 1) + '</span>';
     const chk = item.querySelector('input');
-    chk.addEventListener('change', ()=>{
+    chk.addEventListener('change', () => {
       item.classList.toggle('to-remove', !chk.checked);
       const anyUnchecked = !!$('pageList').querySelector('input:not(:checked)');
       $('btnRemovePages').disabled = !anyUnchecked;
     });
     list.appendChild(item);
   }
-  $('pageTotalInfo').textContent = total+' página'+(total!==1?'s':'');
+  $('pageTotalInfo').textContent = total + ' página' + (total !== 1 ? 's' : '');
   $('btnRemovePages').disabled = true;
 }
 
-async function removerPaginasDesmarcadas(){
-  if(!_previewBytes) return;
+async function removerPaginasDesmarcadas() {
+  if (!_previewBytes) return;
   const items = [...$('pageList').querySelectorAll('.page-item')];
-  const keep  = items.map((el,i)=>({i, checked: el.querySelector('input').checked}))
-                     .filter(x=>x.checked).map(x=>x.i);
-  if(keep.length===0){ alert('Selecione ao menos uma página para manter.'); return; }
+  const keep = items.map((el, i) => ({ i, checked: el.querySelector('input').checked }))
+    .filter(x => x.checked).map(x => x.i);
+  if (keep.length === 0) { alert('Selecione ao menos uma página para manter.'); return; }
 
   // Mantém mapeamento para os índices do PDF original (para re-aplicar na geração final)
-  if(_keptPageIndices === null){
+  if (_keptPageIndices === null) {
     _keptPageIndices = keep;
   } else {
     _keptPageIndices = keep.map(i => _keptPageIndices[i]);
   }
 
-  const src   = await PDFDocument.load(_toU8(_previewBytes), {ignoreEncryption: true});
-  const dst   = await PDFDocument.create();
+  const src = await PDFDocument.load(_toU8(_previewBytes), { ignoreEncryption: true });
+  const dst = await PDFDocument.create();
   const pages = await dst.copyPages(src, keep);
-  pages.forEach(p=>dst.addPage(p));
+  pages.forEach(p => dst.addPage(p));
 
   _previewBytes = await dst.save(); // Uint8Array
   _persistedPreviewBytes = _previewBytes; // sobrevive ao fechar/abrir o preview
-  _correctedBytes        = _previewBytes; // gerarPDF() usará diretamente
+  _correctedBytes = _previewBytes; // gerarPDF() usará diretamente
   _atualizarBtnReset();
   _atualizarFrame();
   await _atualizarListaPaginas();
 }
 
-function pageListSelectAll(checked){
-  $('pageList').querySelectorAll('input').forEach(c=>{
+function pageListSelectAll(checked) {
+  $('pageList').querySelectorAll('input').forEach(c => {
     c.checked = checked;
     c.closest('.page-item').classList.toggle('to-remove', !checked);
   });
   $('btnRemovePages').disabled = checked;
 }
 
-function fecharPreview(){
+function fecharPreview() {
   if (_editMode) sairEdicao();
   $('previewModal').classList.remove('show');
-  if(_previewUrl){ URL.revokeObjectURL(_previewUrl); _previewUrl = null; }
+  if (_previewUrl) { URL.revokeObjectURL(_previewUrl); _previewUrl = null; }
   _previewBytes = null;
   $('pageList').innerHTML = '<p class="sidebar-info" style="padding:8px">Abra o preview para listar.</p>';
   $('pageTotalInfo').textContent = '';
@@ -623,20 +623,20 @@ function fecharPreview(){
   // _persistedPreviewBytes é mantido intencionalmente para sobreviver ao fechar
 }
 
-function _atualizarBtnReset(){
+function _atualizarBtnReset() {
   const btn = $('btnResetPreview');
-  if(btn) btn.style.display = _persistedPreviewBytes ? '' : 'none';
+  if (btn) btn.style.display = _persistedPreviewBytes ? '' : 'none';
 }
 
-async function resetarPreview(){
-  if(!confirm('Isso vai descartar todas as páginas removidas e edições salvas, voltando ao PDF original. Continuar?')) return;
+async function resetarPreview() {
+  if (!confirm('Isso vai descartar todas as páginas removidas e edições salvas, voltando ao PDF original. Continuar?')) return;
   _persistedPreviewBytes = null;
-  _keptPageIndices       = null;
-  _correctedBytes        = null;
-  _editCorrections       = [];
-  _editPageRotations     = {};
+  _keptPageIndices = null;
+  _correctedBytes = null;
+  _editCorrections = [];
+  _editPageRotations = {};
   _atualizarBtnReset();
-  if($('previewModal').classList.contains('show')){
+  if ($('previewModal').classList.contains('show')) {
     fecharPreview();
     await abrirPreview();
   }
@@ -644,18 +644,18 @@ async function resetarPreview(){
 
 // ─── Modo de edição / sobreposição ──────────────────────────────────────────
 
-async function entrarModoEdicao(){
-  if(!_previewBytes){ alert('Abra o preview antes de editar.'); return; }
+async function entrarModoEdicao() {
+  if (!_previewBytes) { alert('Abra o preview antes de editar.'); return; }
   _editMode = true;
   _editCurrentPage = 1;
   // _editCorrections é preservado: caixas pendentes (não aplicadas) voltam ao entrar de novo
-  _editPageRotations= {}; // rotações sempre reiniciam (já estão gravadas no PDF se aplicadas)
+  _editPageRotations = {}; // rotações sempre reiniciam (já estão gravadas no PDF se aplicadas)
 
   // Começa no modo selecionar
   setEditTool('select');
 
   // Carrega PDF.js com uma CÓPIA dos bytes (getDocument transfere o buffer para o worker)
-  _editPdfJsDoc = await pdfjsLib.getDocument({data: _toU8(_previewBytes)}).promise;
+  _editPdfJsDoc = await pdfjsLib.getDocument({ data: _toU8(_previewBytes) }).promise;
 
   // Troca iframe por editView
   $('previewFrame').style.display = 'none';
@@ -667,23 +667,23 @@ async function entrarModoEdicao(){
   _gerarEditThumbs();
 }
 
-async function _gerarEditThumbs(){
+async function _gerarEditThumbs() {
   const sidebar = $('editThumbSidebar');
-  if(!sidebar || !_editPdfJsDoc) return;
+  if (!sidebar || !_editPdfJsDoc) return;
   sidebar.innerHTML = '';
   const total = _editPdfJsDoc.numPages;
-  for(let i = 1; i <= total; i++){
-    const pg  = await _editPdfJsDoc.getPage(i);
+  for (let i = 1; i <= total; i++) {
+    const pg = await _editPdfJsDoc.getPage(i);
     const rot = _editPageRotations[i] || 0;
-    const vp  = pg.getViewport({scale: 0.18, rotation: rot});
-    const c   = document.createElement('canvas');
-    c.width   = vp.width;
-    c.height  = vp.height;
-    await pg.render({canvasContext: c.getContext('2d'), viewport: vp}).promise;
-    const lbl  = document.createElement('span');
+    const vp = pg.getViewport({ scale: 0.18, rotation: rot });
+    const c = document.createElement('canvas');
+    c.width = vp.width;
+    c.height = vp.height;
+    await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    const lbl = document.createElement('span');
     lbl.textContent = 'Pág. ' + i;
     const item = document.createElement('div');
-    item.className   = 'edit-thumb-item' + (i === _editCurrentPage ? ' active' : '');
+    item.className = 'edit-thumb-item' + (i === _editCurrentPage ? ' active' : '');
     item.dataset.page = i;
     item.appendChild(c);
     item.appendChild(lbl);
@@ -692,120 +692,120 @@ async function _gerarEditThumbs(){
   }
 }
 
-function _atualizarEditThumbAtivo(num){
+function _atualizarEditThumbAtivo(num) {
   const sidebar = $('editThumbSidebar');
-  if(!sidebar) return;
+  if (!sidebar) return;
   sidebar.querySelectorAll('.edit-thumb-item').forEach(it => {
     const active = parseInt(it.dataset.page) === num;
     it.classList.toggle('active', active);
-    if(active) it.scrollIntoView({block: 'nearest'});
+    if (active) it.scrollIntoView({ block: 'nearest' });
   });
 }
 
-async function rotatePage(delta){
+async function rotatePage(delta) {
   const num = _editCurrentPage;
   _editPageRotations[num] = ((_editPageRotations[num] || 0) + delta + 360) % 360;
   await renderEditPage(num);
   await _atualizarThumbRotacao(num);
 }
 
-async function _atualizarThumbRotacao(num){
+async function _atualizarThumbRotacao(num) {
   const sidebar = $('editThumbSidebar');
-  if(!sidebar || !_editPdfJsDoc) return;
-  const item = sidebar.querySelector('.edit-thumb-item[data-page="'+num+'"]');
-  if(!item) return;
+  if (!sidebar || !_editPdfJsDoc) return;
+  const item = sidebar.querySelector('.edit-thumb-item[data-page="' + num + '"]');
+  if (!item) return;
   const oldCanvas = item.querySelector('canvas');
-  if(!oldCanvas) return;
-  const pg  = await _editPdfJsDoc.getPage(num);
+  if (!oldCanvas) return;
+  const pg = await _editPdfJsDoc.getPage(num);
   const rot = _editPageRotations[num] || 0;
-  const vp  = pg.getViewport({scale: 0.18, rotation: rot});
-  const c   = document.createElement('canvas');
-  c.width   = vp.width;
-  c.height  = vp.height;
-  await pg.render({canvasContext: c.getContext('2d'), viewport: vp}).promise;
+  const vp = pg.getViewport({ scale: 0.18, rotation: rot });
+  const c = document.createElement('canvas');
+  c.width = vp.width;
+  c.height = vp.height;
+  await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
   item.replaceChild(c, oldCanvas);
 }
 
-function setEditTool(tool){
+function setEditTool(tool) {
   _editTool = tool;
-  document.getElementById('editToolSelect').classList.toggle('active', tool==='select');
-  document.getElementById('editToolAdd').classList.toggle('active', tool==='add');
+  document.getElementById('editToolSelect').classList.toggle('active', tool === 'select');
+  document.getElementById('editToolAdd').classList.toggle('active', tool === 'add');
   const wrap = $('editCanvasWrap');
-  if(wrap) wrap.classList.toggle('tool-add', tool==='add');
+  if (wrap) wrap.classList.toggle('tool-add', tool === 'add');
   const hint = document.getElementById('editHint');
-  if(hint) hint.textContent = tool==='add'
+  if (hint) hint.textContent = tool === 'add'
     ? 'Clique na pagina para adicionar uma caixa de texto'
     : 'Arraste a caixa para mover; redimensione pelo canto inferior direito';
 }
 
-function sairEdicao(){
+function sairEdicao() {
   _editMode = false;
   $('editView').classList.remove('active');
   $('previewFrame').style.display = '';
   // Limpa canvas e caixas
   const wrap = $('editCanvasWrap');
-  wrap.querySelectorAll('.corr-box').forEach(b=>b.remove());
+  wrap.querySelectorAll('.corr-box').forEach(b => b.remove());
   const ctx = $('editCanvas').getContext('2d');
-  ctx.clearRect(0,0,$('editCanvas').width,$('editCanvas').height);
-  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  ctx.clearRect(0, 0, $('editCanvas').width, $('editCanvas').height);
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
 }
 
-function _atualizarNavEdicao(){
+function _atualizarNavEdicao() {
   const total = _editPdfJsDoc ? _editPdfJsDoc.numPages : 1;
   const numEl = document.getElementById('editPageNum');
   const totEl = document.getElementById('editTotalPages');
-  if(numEl) numEl.textContent = _editCurrentPage;
-  if(totEl) totEl.textContent = total;
+  if (numEl) numEl.textContent = _editCurrentPage;
+  if (totEl) totEl.textContent = total;
   const prev = document.getElementById('editPrevBtn');
   const next = document.getElementById('editNextBtn');
-  if(prev) prev.disabled = _editCurrentPage <= 1;
-  if(next) next.disabled = _editCurrentPage >= total;
+  if (prev) prev.disabled = _editCurrentPage <= 1;
+  if (next) next.disabled = _editCurrentPage >= total;
 }
 
-async function renderEditPage(num){
-  if(!_editPdfJsDoc) return;
+async function renderEditPage(num) {
+  if (!_editPdfJsDoc) return;
   _editCurrentPage = num;
   _atualizarNavEdicao();
   _atualizarEditThumbAtivo(num);
 
   const page = await _editPdfJsDoc.getPage(num);
-  const rot  = _editPageRotations[num] || 0;
-  const vp   = page.getViewport({scale: _editScale, rotation: rot});
+  const rot = _editPageRotations[num] || 0;
+  const vp = page.getViewport({ scale: _editScale, rotation: rot });
 
   const canvas = $('editCanvas');
-  const ctx    = canvas.getContext('2d');
-  canvas.width  = vp.width;
+  const ctx = canvas.getContext('2d');
+  canvas.width = vp.width;
   canvas.height = vp.height;
-  await page.render({canvasContext: ctx, viewport: vp}).promise;
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
 
   // Remove caixas antigas e reposiciona as da página atual
   const wrap = $('editCanvasWrap');
-  wrap.querySelectorAll('.corr-box').forEach(b=>b.remove());
+  wrap.querySelectorAll('.corr-box').forEach(b => b.remove());
   _editCorrections
-    .filter(c=>c.page===num)
-    .forEach((c,idx)=>{ wrap.appendChild(_criarBoxDiv(c, idx)); });
+    .filter(c => c.page === num)
+    .forEach((c, idx) => { wrap.appendChild(_criarBoxDiv(c, idx)); });
 }
 
-async function editPrevPage(){
-  if(_editCurrentPage>1) await renderEditPage(_editCurrentPage-1);
+async function editPrevPage() {
+  if (_editCurrentPage > 1) await renderEditPage(_editCurrentPage - 1);
 }
-async function editNextPage(){
-  if(_editPdfJsDoc && _editCurrentPage<_editPdfJsDoc.numPages) await renderEditPage(_editCurrentPage+1);
+async function editNextPage() {
+  if (_editPdfJsDoc && _editCurrentPage < _editPdfJsDoc.numPages) await renderEditPage(_editCurrentPage + 1);
 }
 
-function editCanvasClick(e){
-  if(!_editMode || _editTool !== 'add') return;
+function editCanvasClick(e) {
+  if (!_editMode || _editTool !== 'add') return;
   // Ignora cliques originados de dentro de uma corr-box
-  if(e.target.closest && e.target.closest('.corr-box')) return;
+  if (e.target.closest && e.target.closest('.corr-box')) return;
 
-  const wrap   = $('editCanvasWrap');
-  const rect   = wrap.getBoundingClientRect();
-  const x      = e.clientX - rect.left;
-  const y      = e.clientY - rect.top;
-  const fsEl   = document.getElementById('editFontSize');
-  const colEl  = document.getElementById('editColor');
-  const fSize  = fsEl ? parseInt(fsEl.value)||12 : 12;
-  const color  = colEl ? colEl.value : '#000000';
+  const wrap = $('editCanvasWrap');
+  const rect = wrap.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const fsEl = document.getElementById('editFontSize');
+  const colEl = document.getElementById('editColor');
+  const fSize = fsEl ? parseInt(fsEl.value) || 12 : 12;
+  const color = colEl ? colEl.value : '#000000';
 
   const correction = {
     page: _editCurrentPage,
@@ -816,59 +816,59 @@ function editCanvasClick(e){
     color
   };
   _editCorrections.push(correction);
-  const idx = _editCorrections.length-1;
+  const idx = _editCorrections.length - 1;
   const box = _criarBoxDiv(correction, idx);
   wrap.appendChild(box);
   // Foca no textarea para digitar imediatamente
   const ta = box.querySelector('textarea');
-  if(ta) setTimeout(()=>ta.focus(), 30);
+  if (ta) setTimeout(() => ta.focus(), 30);
 }
 
-function _criarBoxDiv(corr, idx){
+function _criarBoxDiv(corr, idx) {
   const box = document.createElement('div');
   box.className = 'corr-box';
   box.dataset.idx = idx;
-  box.style.left   = corr.x+'px';
-  box.style.top    = corr.y+'px';
-  box.style.width  = corr.w+'px';
-  box.style.height = corr.h+'px';
+  box.style.left = corr.x + 'px';
+  box.style.top = corr.y + 'px';
+  box.style.width = corr.w + 'px';
+  box.style.height = corr.h + 'px';
 
   const ta = document.createElement('textarea');
-  ta.value          = corr.text;
-  ta.style.fontSize = corr.fontSize+'px';
-  ta.style.color    = corr.color;
-  ta.addEventListener('input', ()=>{ _editCorrections[idx].text = ta.value; });
+  ta.value = corr.text;
+  ta.style.fontSize = corr.fontSize + 'px';
+  ta.style.color = corr.color;
+  ta.addEventListener('input', () => { _editCorrections[idx].text = ta.value; });
   // Impede que clique/mousedown no textarea propague para o canvas
-  ta.addEventListener('mousedown', e=>e.stopPropagation());
-  ta.addEventListener('click',     e=>e.stopPropagation());
+  ta.addEventListener('mousedown', e => e.stopPropagation());
+  ta.addEventListener('click', e => e.stopPropagation());
 
   // Drag para mover — ativado somente no modo 'select'
-  let dragging=false, ox=0, oy=0;
-  box.addEventListener('mousedown', e=>{
-    if(e.target===ta) return; // textarea gerencia o próprio cursor
-    if(_editTool !== 'select') return;
-    dragging=true;
+  let dragging = false, ox = 0, oy = 0;
+  box.addEventListener('mousedown', e => {
+    if (e.target === ta) return; // textarea gerencia o próprio cursor
+    if (_editTool !== 'select') return;
+    dragging = true;
     ox = e.clientX - box.offsetLeft;
     oy = e.clientY - box.offsetTop;
     e.preventDefault();
     e.stopPropagation(); // não cria nova box no canvas
   });
-  document.addEventListener('mousemove', e=>{
-    if(!dragging) return;
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
     const nx = e.clientX - ox, ny = e.clientY - oy;
-    box.style.left = nx+'px';
-    box.style.top  = ny+'px';
+    box.style.left = nx + 'px';
+    box.style.top = ny + 'px';
     _editCorrections[idx].x = nx;
     _editCorrections[idx].y = ny;
   });
-  document.addEventListener('mouseup', ()=>{ dragging=false; });
+  document.addEventListener('mouseup', () => { dragging = false; });
 
   // ResizeObserver acompanha redimensionamento nativo (CSS resize)
   // Ignora o primeiro disparo (montagem inicial) para não sobrescrever dimensões salvas
-  if(window.ResizeObserver){
+  if (window.ResizeObserver) {
     let _rsMounted = false;
-    new ResizeObserver(()=>{
-      if(!_rsMounted){ _rsMounted = true; return; }
+    new ResizeObserver(() => {
+      if (!_rsMounted) { _rsMounted = true; return; }
       _editCorrections[idx].w = box.offsetWidth;
       _editCorrections[idx].h = box.offsetHeight;
     }).observe(box);
@@ -878,53 +878,53 @@ function _criarBoxDiv(corr, idx){
   del.className = 'corr-del';
   del.type = 'button';
   del.textContent = '×';
-  del.addEventListener('mousedown', e=>e.stopPropagation());
-  del.onclick = e=>{ e.stopPropagation(); deletarCorrecao(idx); };
+  del.addEventListener('mousedown', e => e.stopPropagation());
+  del.onclick = e => { e.stopPropagation(); deletarCorrecao(idx); };
 
   box.appendChild(ta);
   box.appendChild(del);
   return box;
 }
 
-function deletarCorrecao(idx){
+function deletarCorrecao(idx) {
   _editCorrections[idx] = null; // marca como deletada
-  $('editCanvasWrap').querySelectorAll('.corr-box').forEach(b=>{
-    if(parseInt(b.dataset.idx)===idx) b.remove();
+  $('editCanvasWrap').querySelectorAll('.corr-box').forEach(b => {
+    if (parseInt(b.dataset.idx) === idx) b.remove();
   });
 }
 
-async function aplicarCorrecoes(){
-  if(!_previewBytes){ alert('Nenhum PDF no preview.'); return; }
+async function aplicarCorrecoes() {
+  if (!_previewBytes) { alert('Nenhum PDF no preview.'); return; }
 
-  const doc  = await PDFDocument.load(_toU8(_previewBytes), {ignoreEncryption: true});
+  const doc = await PDFDocument.load(_toU8(_previewBytes), { ignoreEncryption: true });
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const pages = doc.getPages();
 
   const corrections = _editCorrections.filter(Boolean);
-  for(const c of corrections){
-    const pdfPage = pages[c.page-1];
-    if(!pdfPage) continue;
-    const {width, height} = pdfPage.getSize();
+  for (const c of corrections) {
+    const pdfPage = pages[c.page - 1];
+    if (!pdfPage) continue;
+    const { width, height } = pdfPage.getSize();
     // Converte coordenadas: canvas Y from top → pdf-lib Y from bottom
     const rot = _editPageRotations[c.page] || 0;
-    const s   = _editScale;
-    const rw  = c.w, rh = Math.max(20, c.h);
+    const s = _editScale;
+    const rw = c.w, rh = Math.max(20, c.h);
     let pdfX, pdfY, pdfW, pdfH;
-    if(rot === 0){
-      pdfX = c.x/s;             pdfY = height-(c.y+rh)/s;    pdfW = rw/s; pdfH = rh/s;
-    } else if(rot === 90){
-      pdfX = width-(c.y+rh)/s;  pdfY = height-(c.x+rw)/s;   pdfW = rh/s; pdfH = rw/s;
-    } else if(rot === 180){
-      pdfX = width-(c.x+rw)/s;  pdfY = height-(c.y+rh)/s;   pdfW = rw/s; pdfH = rh/s;
+    if (rot === 0) {
+      pdfX = c.x / s; pdfY = height - (c.y + rh) / s; pdfW = rw / s; pdfH = rh / s;
+    } else if (rot === 90) {
+      pdfX = width - (c.y + rh) / s; pdfY = height - (c.x + rw) / s; pdfW = rh / s; pdfH = rw / s;
+    } else if (rot === 180) {
+      pdfX = width - (c.x + rw) / s; pdfY = height - (c.y + rh) / s; pdfW = rw / s; pdfH = rh / s;
     } else {
-      pdfX = c.y/s;             pdfY = c.x/s;               pdfW = rh/s; pdfH = rw/s;
+      pdfX = c.y / s; pdfY = c.x / s; pdfW = rh / s; pdfH = rw / s;
     }
     const boxH = pdfH;
 
     // Retângulo branco de cobertura
     pdfPage.drawRectangle({
       x: pdfX, y: pdfY, width: pdfW, height: boxH,
-      color: rgb(1,1,1), opacity: 1,
+      color: rgb(1, 1, 1), opacity: 1,
     });
     // Borda verde discreta para indicar campo editado
     pdfPage.drawRectangle({
@@ -934,44 +934,44 @@ async function aplicarCorrecoes(){
     });
 
     // Converte cor hex → rgb
-    const hex = c.color.replace('#','');
-    const r = parseInt(hex.substring(0,2),16)/255;
-    const g = parseInt(hex.substring(2,4),16)/255;
-    const b = parseInt(hex.substring(4,6),16)/255;
+    const hex = c.color.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
 
     // Texto
-    if(c.text.trim()){
+    if (c.text.trim()) {
       const lines = c.text.split('\n');
-      const fsPt  = c.fontSize * 0.75; // px → pt aprox
-      let lineY   = pdfY + boxH - fsPt - 2;
-      for(const line of lines){
-        if(!line) { lineY -= fsPt*1.3; continue; }
+      const fsPt = c.fontSize * 0.75; // px → pt aprox
+      let lineY = pdfY + boxH - fsPt - 2;
+      for (const line of lines) {
+        if (!line) { lineY -= fsPt * 1.3; continue; }
         pdfPage.drawText(line, {
-          x: pdfX+3, y: lineY,
+          x: pdfX + 3, y: lineY,
           size: fsPt, font,
-          color: rgb(r,g,b),
-          maxWidth: pdfW-6,
+          color: rgb(r, g, b),
+          maxWidth: pdfW - 6,
         });
-        lineY -= fsPt*1.3;
+        lineY -= fsPt * 1.3;
       }
     }
   }
 
   // Grava a rotação de cada página girada no próprio PDF
-  for(const [pgStr, rot] of Object.entries(_editPageRotations)){
-    if(!rot) continue;
+  for (const [pgStr, rot] of Object.entries(_editPageRotations)) {
+    if (!rot) continue;
     const pg = pages[parseInt(pgStr) - 1];
-    if(pg) pg.setRotation(degrees(rot));
+    if (pg) pg.setRotation(degrees(rot));
   }
 
-  _correctedBytes        = await doc.save();
-  _previewBytes          = _correctedBytes;
+  _correctedBytes = await doc.save();
+  _previewBytes = _correctedBytes;
   _persistedPreviewBytes = _correctedBytes; // sobrevive ao fechar/abrir o preview
   _atualizarBtnReset();
 
   // Limpa caixas e rotações: estão gravadas no PDF, não precisam mais de estado
-  _editCorrections  = [];
-  _editPageRotations= {};
+  _editCorrections = [];
+  _editPageRotations = {};
 
   // Recarrega o preview com o PDF corrigido
   sairEdicao();
@@ -980,29 +980,29 @@ async function aplicarCorrecoes(){
   alert('Correções aplicadas! O PDF final incluirá as sobreposições.');
 }
 
-function toggleFullscreen(){
+function toggleFullscreen() {
   const box = document.querySelector('.modal-box');
-  if(!box) return;
-  if(document.fullscreenElement){
-    document.exitFullscreen().catch(()=>{});
+  if (!box) return;
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => { });
   } else {
-    box.requestFullscreen().catch(()=>{});
+    box.requestFullscreen().catch(() => { });
   }
 }
 
-async function gerarPDFDoPreview(){
+async function gerarPDFDoPreview() {
   // Gera o PDF direto do preview sem precisar fechar a modal
   fecharPreview();
   await gerarPDF();
 }
 
-async function montarCertificado(){
-  const pdf      = await PDFDocument.create();
-  const fontReg  = await pdf.embedFont(StandardFonts.Helvetica);
+async function montarCertificado() {
+  const pdf = await PDFDocument.create();
+  const fontReg = await pdf.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const logo     = await getAsset('logo');
+  const logo = await getAsset('logo');
   const logoTeamPng = await pdf.embedJpg(b64ToBytes(logo));
-  if(STATE.bookBase){
+  if (STATE.bookBase) {
     // complemento PPCI: certificado do composito + certificado do PPCI no mesmo arquivo
     await desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, ovCertificadoComposito());
     await desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, ovCertificadoPpci());
@@ -1010,27 +1010,27 @@ async function montarCertificado(){
     await desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng);
   }
   const bytes = await pdf.save();
-  return new Blob([bytes], {type:'application/pdf'});
+  return new Blob([bytes], { type: 'application/pdf' });
 }
 
 // Embute no doc o logo TEAM e as imagens da capa (usado pela montagem normal e pelo complemento PPCI)
-async function _recursosCapa(pdf){
+async function _recursosCapa(pdf) {
   const [logo, coverAssets] = await Promise.all([getAsset('logo'), getAsset('cover')]);
   const logoTeamPng = await pdf.embedJpg(b64ToBytes(logo));
   let bgImg = null, sfImg = null, hdrImg = null, strip = [];
   try {
-    if(coverAssets && coverAssets.background)  bgImg = await pdf.embedJpg(b64ToBytes(coverAssets.background));
-    if(coverAssets && coverAssets.safetyfirst) sfImg = await pdf.embedPng(b64ToBytes(coverAssets.safetyfirst));
-    if(coverAssets && coverAssets.teamHeader)  hdrImg = await pdf.embedJpg(b64ToBytes(coverAssets.teamHeader));
-    for(const k of ['img1','img2','img3','img4','img5']){
-      if(coverAssets && coverAssets[k]) strip.push(await pdf.embedPng(b64ToBytes(coverAssets[k])));
+    if (coverAssets && coverAssets.background) bgImg = await pdf.embedJpg(b64ToBytes(coverAssets.background));
+    if (coverAssets && coverAssets.safetyfirst) sfImg = await pdf.embedPng(b64ToBytes(coverAssets.safetyfirst));
+    if (coverAssets && coverAssets.teamHeader) hdrImg = await pdf.embedJpg(b64ToBytes(coverAssets.teamHeader));
+    for (const k of ['img1', 'img2', 'img3', 'img4', 'img5']) {
+      if (coverAssets && coverAssets[k]) strip.push(await pdf.embedPng(b64ToBytes(coverAssets[k])));
     }
-  } catch(e){ console.warn('cover assets embed:', e); }
+  } catch (e) { console.warn('cover assets embed:', e); }
   return { logoTeamPng, bgImg, sfImg, hdrImg, strip };
 }
 
-async function montarDatabook(){
-  if(STATE.bookBase) return montarBookPpci(); // modo "importar book" (Controller/ppci.js)
+async function montarDatabook() {
+  if (STATE.bookBase) return montarBookPpci(); // modo "importar book" (Controller/ppci.js)
   const pdf = await PDFDocument.create();
   const fontReg = await pdf.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -1045,78 +1045,85 @@ async function montarDatabook(){
   await desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, tag);
   await desenhaIndice(pdf, fontReg, fontBold, logoTeamPng, docNum);
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '1', 'SOLICITAÇÃO DE SERVIÇO');
-  if(STATE.uploads.ss) await anexarPdf(pdf, STATE.uploads.ss);
+  if (STATE.uploads.ss) await anexarPdf(pdf, STATE.uploads.ss);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '2', 'RELATÓRIO DIÁRIO DE OPERAÇÕES');
-  if(STATE.uploads.rdo) await anexarPdf(pdf, STATE.uploads.rdo);
+  if (STATE.uploads.rdo) await anexarPdf(pdf, STATE.uploads.rdo);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '3', 'RELATÓRIO DE EXECUÇÃO E REGISTRO DE INSTALAÇÃO');
-  if(STATE.uploads.rel) await anexarPdf(pdf, STATE.uploads.rel);
-  if(STATE.uploads.rdi) await anexarPdf(pdf, STATE.uploads.rdi);
+  if (STATE.uploads.rel) await anexarPdf(pdf, STATE.uploads.rel);
+  if (STATE.uploads.rdi) await anexarPdf(pdf, STATE.uploads.rdi);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '4', 'PROJETO');
-  if(STATE.uploads.mem) await anexarPdf(pdf, STATE.uploads.mem);
+  if (STATE.uploads.mem) await anexarPdf(pdf, STATE.uploads.mem);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '5', 'PROCEDIMENTOS');
   const proc = document.querySelector('input[name=proc]:checked');
-  if(proc) await anexarPdf(pdf, b64ToBytes(procedimentos[proc.value]));
+  if (proc) await anexarPdf(pdf, b64ToBytes(procedimentos[proc.value]));
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '6', 'FICHA TÉCNICA');
-  for(const c of document.querySelectorAll('input[name=ficha]:checked')){
+  for (const c of document.querySelectorAll('input[name=ficha]:checked')) {
     await anexarPdf(pdf, b64ToBytes(fichas[c.value]));
   }
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '7', 'PDA');
-  for(const c of document.querySelectorAll('input[name=pda]:checked')){
+  for (const c of document.querySelectorAll('input[name=pda]:checked')) {
     await anexarPdf(pdf, b64ToBytes(pda[c.value]));
   }
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '8', 'AVALIAÇÃO DE RISCO DO REPARO');
-  if(STATE.uploads.arpt) await anexarPdf(pdf, STATE.uploads.arpt);
+  if (STATE.uploads.arpt) await anexarPdf(pdf, STATE.uploads.arpt);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '9', 'CERTIFICADO DE GARANTIA');
   await desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng);
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '10', 'CERTIFICADOS DE QUALIFICAÇÃO DOS TÉCNICOS');
-  for(const cb of document.querySelectorAll('.tec-check:checked')){
+  for (const cb of document.querySelectorAll('.tec-check:checked')) {
     const nome = cb.dataset.nome;
-    const sel = document.querySelector('.tec-cert[data-nome="'+cssEscape(nome)+'"]');
-    if(!sel || !sel.value) continue;
+    const sel = document.querySelector('.tec-cert[data-nome="' + cssEscape(nome) + '"]');
+    if (!sel || !sel.value) continue;
     const certs = tecnicos[nome];
-    if(sel.value === '__ALL__'){
-      for(const k of Object.keys(certs).sort()){
+    if (sel.value === '__ALL__') {
+      for (const k of Object.keys(certs).sort()) {
         await anexarPdf(pdf, b64ToBytes(certs[k]));
       }
-    }else if(certs[sel.value]){
+    } else if (certs[sel.value]) {
       await anexarPdf(pdf, b64ToBytes(certs[sel.value]));
     }
   }
-  for(const cb of document.querySelectorAll('.tec-jotun:checked')){
+  for (const cb of document.querySelectorAll('.tec-jotun:checked')) {
     const idname = cb.dataset.idcard;
     const card = idcards[idname];
-    if(card) await anexarPdf(pdf, b64ToBytes(card.pdf));
+    if (card) await anexarPdf(pdf, b64ToBytes(card.pdf));
   }
 
   desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, $('capaElab').value.trim());
 
   const bytes = await pdf.save();
-  return new Blob([bytes], {type:'application/pdf'});
+  return new Blob([bytes], { type: 'application/pdf' });
 }
 
 const ELABORADORES = [
   {
-    chaves:  ['lais', 'laís'],
-    nome:    'Lais Souza Leite',
-    cargo:   'Analista de Operações',
-    linha:   'Leak Repair Service Line',
-    email:   'Lais.Leite@teaminc.com',
+    chaves: ['lais', 'laís'],
+    nome: 'Lais Souza Leite',
+    cargo: 'Analista de Operações',
+    linha: 'Leak Repair Service Line',
+    email: 'Lais.Leite@teaminc.com',
   },
   {
-    chaves:  ['juliano'],
-    nome:    'Juliano Narezi Sobrinho Junior',
-    cargo:   'Jovem Aprendiz de Operações',
-    linha:   'Leak Repair Service Line',
-    email:   'Juliano.Sobrinho@teaminc.com',
+    chaves: ['juliano'],
+    nome: 'Juliano Narezi Sobrinho Junior',
+    cargo: 'Jovem Aprendiz de Operações',
+    linha: 'Leak Repair Service Line',
+    email: 'Juliano.Sobrinho@teaminc.com',
+  },
+  {
+    chaves: ['Allysson','allysson'],
+    nome: 'Allysson Rocha',
+    cargo: 'Supervisor Operacional',
+    linha: 'Leak Repair Service Line',
+    email: 'Allysson.Rocha@teaminc.com',
   },
 ];
 
@@ -1126,23 +1133,23 @@ function resolverElaborador(elab) {
     || { nome: elab || '___________________', cargo: '', email: '' };
 }
 
-function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
+function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab) {
   const autor = resolverElaborador(elab);
-  const page  = pdf.addPage([PAGE_W, PAGE_H]);
+  const page = pdf.addPage([PAGE_W, PAGE_H]);
   desenhaCabecalhoRodape(page, fontReg, fontBold, logoTeamPng, docNum);
 
   // ---- SEÇÃO DE ENCERRAMENTO ----
   let y = 280;
-  page.drawText('Atenciosamente,', {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
+  page.drawText('Atenciosamente,', { x: MARGIN, y, size: 10, font: fontReg, color: TEAM_BLUE });
   y -= 28;
-  page.drawText(autor.nome,  {x:MARGIN, y, size:13, font:fontBold, color:TEAM_BLUE});
+  page.drawText(autor.nome, { x: MARGIN, y, size: 13, font: fontBold, color: TEAM_BLUE });
   y -= 16;
   if (autor.cargo) {
-    page.drawText(autor.cargo, {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
+    page.drawText(autor.cargo, { x: MARGIN, y, size: 10, font: fontReg, color: TEAM_BLUE });
     y -= 14;
   }
   if (autor.linha) {
-    page.drawText(autor.linha, {x:MARGIN, y, size:10, font:fontReg, color:TEAM_BLUE});
+    page.drawText(autor.linha, { x: MARGIN, y, size: 10, font: fontReg, color: TEAM_BLUE });
     y -= 14;
   }
 
@@ -1150,7 +1157,7 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
   const cSc = Math.min(90 / logoTeamPng.width, 48 / logoTeamPng.height);
   const cLw = logoTeamPng.width * cSc, cLh = logoTeamPng.height * cSc;
   y -= (cLh + 1);
-  page.drawImage(logoTeamPng, {x:MARGIN, y, width:cLw, height:cLh});
+  page.drawImage(logoTeamPng, { x: MARGIN, y, width: cLw, height: cLh });
   y -= 10;
 
   // Dados de contato do elaborador
@@ -1161,118 +1168,118 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab){
     'www.TeamInc.com',
   ];
   for (const l of linhasContato) {
-    page.drawText(l, {x:MARGIN, y, size:8.5, font:fontReg, color:TEAM_BLUE});
+    page.drawText(l, { x: MARGIN, y, size: 8.5, font: fontReg, color: TEAM_BLUE });
     y -= 13;
   }
 
 }
 
-const COMPRESS_DPI     = 100;  // resolucao efetiva das paginas anexadas, aplicada so na hora de gerar o PDF final
+const COMPRESS_DPI = 100;  // resolucao efetiva das paginas anexadas, aplicada so na hora de gerar o PDF final
 const COMPRESS_QUALITY = 0.45; // qualidade do JPEG re-codificado (0 a 1)
-const MAX_RENDER_PX    = 1800; // teto de pixels no maior lado do canvas de renderizacao
-const ANEXO_MARK       = 'TeamAnexo'; // chave custom gravada no dict da pagina p/ identifica-la como anexo
-const SECAO_MARK       = 'TeamSecao'; // idem, nos separadores: guarda o n da secao (usado pela importacao do book)
+const MAX_RENDER_PX = 1800; // teto de pixels no maior lado do canvas de renderizacao
+const ANEXO_MARK = 'TeamAnexo'; // chave custom gravada no dict da pagina p/ identifica-la como anexo
+const SECAO_MARK = 'TeamSecao'; // idem, nos separadores: guarda o n da secao (usado pela importacao do book)
 
 // Toda pagina anexada (upload ou asset) e normalizada para o tamanho A4 (PAGE_W x PAGE_H),
 // com o conteudo original ajustado por contain (sem distorcer) e centralizado. Isso evita
 // que um PDF de origem com Caixa de Midia fora do padrao (ex.: PDF gerado por ferramenta que
 // grava pixels como se fossem pontos) produza uma pagina gigante no databook final.
-function _fitRectoA4(srcW, srcH){
+function _fitRectoA4(srcW, srcH) {
   const scale = Math.min(PAGE_W / srcW, PAGE_H / srcH);
-  const width  = srcW * scale, height = srcH * scale;
-  return { x:(PAGE_W-width)/2, y:(PAGE_H-height)/2, width, height };
+  const width = srcW * scale, height = srcH * scale;
+  return { x: (PAGE_W - width) / 2, y: (PAGE_H - height) / 2, width, height };
 }
 
 // Anexa um PDF (upload ou asset) sempre em qualidade vetorial total — usado tanto na
 // pre-visualizacao quanto na montagem do databook, que por isso ficam nitidas e rapidas
 // (sem depender do PDF.js). Cada pagina anexada e marcada com ANEXO_MARK para que a
 // compressao (comprimirDatabookFinal) saiba, mais tarde, quais paginas pode rasterizar.
-async function anexarPdf(targetPdf, source){
-  try{
+async function anexarPdf(targetPdf, source) {
+  try {
     const bytes = _toU8(source);
     // embedPdf() sem indices explicitos so traz a PRIMEIRA pagina — por isso e preciso
     // carregar o doc a parte so pra descobrir quantas paginas ele tem.
-    const srcDoc   = await PDFDocument.load(_toU8(source), {ignoreEncryption:true});
-    const idx      = srcDoc.getPageIndices();
+    const srcDoc = await PDFDocument.load(_toU8(source), { ignoreEncryption: true });
+    const idx = srcDoc.getPageIndices();
     const embedded = await targetPdf.embedPdf(bytes, idx);
-    for(const embPage of embedded){
+    for (const embPage of embedded) {
       const newPage = targetPdf.addPage([PAGE_W, PAGE_H]);
       newPage.drawPage(embPage, _fitRectoA4(embPage.width, embPage.height));
       newPage.node.set(PDFName.of(ANEXO_MARK), PDFBool.True);
     }
-  }catch(e){ console.error('anexarPdf:', e) }
+  } catch (e) { console.error('anexarPdf:', e) }
 }
 
 // Comprime o databook já montado (com remoções/edições já aplicadas), rodando só no
 // momento de gerar o PDF final para download — a pré-visualização e o editor continuam
 // trabalhando com as páginas em qualidade total. Só as páginas marcadas por anexarPdf são
 // rasterizadas/recomprimidas; capa, separadores, índice etc. permanecem vetoriais.
-async function comprimirDatabookFinal(bytes){
-  if(!window.pdfjsLib) return _toU8(bytes);
+async function comprimirDatabookFinal(bytes) {
+  if (!window.pdfjsLib) return _toU8(bytes);
 
   let srcDoc;
-  try{ srcDoc = await PDFDocument.load(_toU8(bytes), {ignoreEncryption:true}); }
-  catch(e){ console.warn('comprimirDatabookFinal: falha ao carregar PDF, mantendo sem compressao:', e); return _toU8(bytes); }
+  try { srcDoc = await PDFDocument.load(_toU8(bytes), { ignoreEncryption: true }); }
+  catch (e) { console.warn('comprimirDatabookFinal: falha ao carregar PDF, mantendo sem compressao:', e); return _toU8(bytes); }
 
-  const srcPages   = srcDoc.getPages();
+  const srcPages = srcDoc.getPages();
   const anexoFlags = srcPages.map(p => !!p.node.get(PDFName.of(ANEXO_MARK)));
-  if(!anexoFlags.some(Boolean)) return _toU8(bytes); // nada marcado — nada a comprimir
+  if (!anexoFlags.some(Boolean)) return _toU8(bytes); // nada marcado — nada a comprimir
 
   let pdfJsDoc;
-  try{ pdfJsDoc = await pdfjsLib.getDocument({data: _toU8(bytes)}).promise; }
-  catch(e){ console.warn('comprimirDatabookFinal: PDF.js falhou, mantendo sem compressao:', e); return _toU8(bytes); }
+  try { pdfJsDoc = await pdfjsLib.getDocument({ data: _toU8(bytes) }).promise; }
+  catch (e) { console.warn('comprimirDatabookFinal: PDF.js falhou, mantendo sem compressao:', e); return _toU8(bytes); }
 
   const out = await PDFDocument.create();
 
   // So embute (vetorial) as paginas que NAO vao ser rasterizadas — evita carregar no
   // arquivo final o conteudo pesado original das paginas que serao recomprimidas.
-  const idxVetor      = anexoFlags.map((f,i) => f ? -1 : i).filter(i => i >= 0);
-  const embVetor      = idxVetor.length ? await out.embedPdf(_toU8(bytes), idxVetor) : [];
-  const embPorIndice  = new Map(idxVetor.map((origIdx, pos) => [origIdx, embVetor[pos]]));
+  const idxVetor = anexoFlags.map((f, i) => f ? -1 : i).filter(i => i >= 0);
+  const embVetor = idxVetor.length ? await out.embedPdf(_toU8(bytes), idxVetor) : [];
+  const embPorIndice = new Map(idxVetor.map((origIdx, pos) => [origIdx, embVetor[pos]]));
 
-  for(let i = 0; i < srcPages.length; i++){
+  for (let i = 0; i < srcPages.length; i++) {
     const newPage = out.addPage([PAGE_W, PAGE_H]);
 
     // preserva a marca de secao dos separadores (a importacao do book depende dela)
     const secao = srcPages[i].node.lookup(PDFName.of(SECAO_MARK));
-    if(secao) newPage.node.set(PDFName.of(SECAO_MARK), PDFNumber.of(secao.asNumber()));
+    if (secao) newPage.node.set(PDFName.of(SECAO_MARK), PDFNumber.of(secao.asNumber()));
 
-    if(!anexoFlags[i]){
+    if (!anexoFlags[i]) {
       const emb = embPorIndice.get(i);
       newPage.drawPage(emb, _fitRectoA4(emb.width, emb.height));
       continue;
     }
 
-    try{
-      const page   = await pdfJsDoc.getPage(i+1);
-      let scale    = COMPRESS_DPI / 72;
-      let viewport = page.getViewport({scale});
+    try {
+      const page = await pdfJsDoc.getPage(i + 1);
+      let scale = COMPRESS_DPI / 72;
+      let viewport = page.getViewport({ scale });
 
       // Teto de seguranca: paginas de origem com Caixa de Midia fora do padrao (muitos
       // milhares de "pontos") nao devem gerar canvases gigantes so por causa do DPI.
       const maiorLado = Math.max(viewport.width, viewport.height);
-      if(maiorLado > MAX_RENDER_PX){
+      if (maiorLado > MAX_RENDER_PX) {
         scale = scale * (MAX_RENDER_PX / maiorLado);
-        viewport = page.getViewport({scale});
+        viewport = page.getViewport({ scale });
       }
 
-      const canvas  = document.createElement('canvas');
-      canvas.width  = Math.round(viewport.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(viewport.width);
       canvas.height = Math.round(viewport.height);
 
-      const renderTask = page.render({canvasContext: canvas.getContext('2d'), viewport});
+      const renderTask = page.render({ canvasContext: canvas.getContext('2d'), viewport });
       await Promise.race([
         renderTask.promise,
         new Promise((_, rej) => setTimeout(() => { renderTask.cancel(); rej(new Error('render timeout')); }, 20000))
       ]);
 
-      const jpegB64  = canvas.toDataURL('image/jpeg', COMPRESS_QUALITY).split(',')[1];
-      const img      = await out.embedJpg(b64ToBytes(jpegB64));
-      const widthPt  = viewport.width  / scale;
+      const jpegB64 = canvas.toDataURL('image/jpeg', COMPRESS_QUALITY).split(',')[1];
+      const img = await out.embedJpg(b64ToBytes(jpegB64));
+      const widthPt = viewport.width / scale;
       const heightPt = viewport.height / scale;
       newPage.drawImage(img, _fitRectoA4(widthPt, heightPt));
-    }catch(e){
-      console.warn('comprimirDatabookFinal: pagina '+(i+1)+' sem compressao, usando original:', e);
+    } catch (e) {
+      console.warn('comprimirDatabookFinal: pagina ' + (i + 1) + ' sem compressao, usando original:', e);
       const embFallback = (await out.embedPdf(_toU8(bytes), [i]))[0];
       newPage.drawPage(embFallback, _fitRectoA4(embFallback.width, embFallback.height));
     }
@@ -1281,16 +1288,16 @@ async function comprimirDatabookFinal(bytes){
   return await out.save();
 }
 
-function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
+function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum) {
   const ORANGE = rgb(0.867, 0.451, 0.125);
-  const HDR_H  = 58;
+  const HDR_H = 58;
   const HDR_BOT = PAGE_H - HDR_H;
 
   // Logo — scaled to fit header height, capped at 90pt wide
   const maxLH = HDR_H - 10, maxLW = 90;
   const sc = Math.min(maxLW / logoPng.width, maxLH / logoPng.height);
   const lw = logoPng.width * sc, lh = logoPng.height * sc;
-  page.drawImage(logoPng, {x:MARGIN, y:HDR_BOT + (HDR_H - lh)/2, width:lw, height:lh});
+  page.drawImage(logoPng, { x: MARGIN, y: HDR_BOT + (HDR_H - lh) / 2, width: lw, height: lh });
 
   // Position right text section after logo (no vertical separator line)
   const sepX = MARGIN + lw + 8;
@@ -1301,16 +1308,16 @@ function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
   const t1 = 'RELATÓRIO FINAL DE EXECUÇÃO';
   page.drawText(t1, {
     x: txtX + (txtW - fontBold.widthOfTextAtSize(t1, 11)) / 2,
-    y: PAGE_H - 22, size:11, font:fontBold, color:TEAM_GRAY
+    y: PAGE_H - 22, size: 11, font: fontBold, color: TEAM_GRAY
   });
   const dnW = fontBold.widthOfTextAtSize(docNum, 10);
   const dnX = txtX + (txtW - dnW) / 2;
-  page.drawText(docNum, {x:dnX, y:PAGE_H - 42, size:10, font:fontBold, color:TEAM_GRAY});
-  page.drawLine({start:{x:dnX-6,     y:HDR_BOT+13}, end:{x:dnX-6,     y:HDR_BOT+24}, thickness:0.7, color:TEAM_GRAY});
-  page.drawLine({start:{x:dnX+dnW+6, y:HDR_BOT+13}, end:{x:dnX+dnW+6, y:HDR_BOT+24}, thickness:0.7, color:TEAM_GRAY});
+  page.drawText(docNum, { x: dnX, y: PAGE_H - 42, size: 10, font: fontBold, color: TEAM_GRAY });
+  page.drawLine({ start: { x: dnX - 6, y: HDR_BOT + 13 }, end: { x: dnX - 6, y: HDR_BOT + 24 }, thickness: 0.7, color: TEAM_GRAY });
+  page.drawLine({ start: { x: dnX + dnW + 6, y: HDR_BOT + 13 }, end: { x: dnX + dnW + 6, y: HDR_BOT + 24 }, thickness: 0.7, color: TEAM_GRAY });
 
   // Orange horizontal bottom line
-  page.drawLine({start:{x:MARGIN, y:HDR_BOT}, end:{x:PAGE_W-MARGIN, y:HDR_BOT}, thickness:0.8, color:ORANGE});
+  page.drawLine({ start: { x: MARGIN, y: HDR_BOT }, end: { x: PAGE_W - MARGIN, y: HDR_BOT }, thickness: 0.8, color: ORANGE });
 
   // ——— FOOTER ———
   const FT_Y1 = 38;
@@ -1319,38 +1326,38 @@ function desenhaCabecalhoRodape(page, fontReg, fontBold, logoPng, docNum){
   // Line 1: "TEAM Industrial Services" bold + address
   const ftBold = 'TEAM Industrial Services';
   const ftAddr = ' Avenida Nossa Senhora do Bom Sucesso, 3344 - Alto do Cardoso - Pindamonhangaba/SP, Brazil 12420-010';
-  page.drawText(ftBold, {x:MARGIN, y:FT_Y1, size:7, font:fontBold, color:BLACK});
-  page.drawText(ftAddr, {x:MARGIN + fontBold.widthOfTextAtSize(ftBold, 7), y:FT_Y1, size:7, font:fontReg, color:BLACK});
+  page.drawText(ftBold, { x: MARGIN, y: FT_Y1, size: 7, font: fontBold, color: BLACK });
+  page.drawText(ftAddr, { x: MARGIN + fontBold.widthOfTextAtSize(ftBold, 7), y: FT_Y1, size: 7, font: fontReg, color: BLACK });
 
   // Line 2 left: phone | email | www
   const ft2a = '+55 12 3645-9104|anderson.andrade@TeamInc.com|';
   const ft2www = 'www.TeamInc.com';
-  page.drawText(ft2a,   {x:MARGIN, y:FT_Y2, size:7, font:fontReg, color:BLACK});
-  page.drawText(ft2www, {x:MARGIN + fontReg.widthOfTextAtSize(ft2a, 7), y:FT_Y2, size:7, font:fontBold, color:TEAM_BLUE});
+  page.drawText(ft2a, { x: MARGIN, y: FT_Y2, size: 7, font: fontReg, color: BLACK });
+  page.drawText(ft2www, { x: MARGIN + fontReg.widthOfTextAtSize(ft2a, 7), y: FT_Y2, size: 7, font: fontBold, color: TEAM_BLUE });
 
   // Line 2 right: doc number with border marks
   const dn2W = fontReg.widthOfTextAtSize(docNum, 7);
   const dn2X = PAGE_W - MARGIN - dn2W;
-  page.drawText(docNum, {x:dn2X, y:FT_Y2, size:7, font:fontReg, color:TEAM_GRAY});
-  page.drawLine({start:{x:dn2X-5,        y:FT_Y2-2}, end:{x:dn2X-5,        y:FT_Y2+9}, thickness:0.5, color:TEAM_GRAY});
-  page.drawLine({start:{x:PAGE_W-MARGIN+2, y:FT_Y2-2}, end:{x:PAGE_W-MARGIN+2, y:FT_Y2+9}, thickness:0.5, color:TEAM_GRAY});
+  page.drawText(docNum, { x: dn2X, y: FT_Y2, size: 7, font: fontReg, color: TEAM_GRAY });
+  page.drawLine({ start: { x: dn2X - 5, y: FT_Y2 - 2 }, end: { x: dn2X - 5, y: FT_Y2 + 9 }, thickness: 0.5, color: TEAM_GRAY });
+  page.drawLine({ start: { x: PAGE_W - MARGIN + 2, y: FT_Y2 - 2 }, end: { x: PAGE_W - MARGIN + 2, y: FT_Y2 + 9 }, thickness: 0.5, color: TEAM_GRAY });
 
   // Black footer line BELOW text, edge-to-edge
-  page.drawLine({start:{x:0, y:20}, end:{x:PAGE_W, y:20}, thickness:0.8, color:BLACK});
+  page.drawLine({ start: { x: 0, y: 20 }, end: { x: PAGE_W, y: 20 }, thickness: 0.8, color: BLACK });
 }
 
-async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, sfImg, hdrImg, strip = []){
+async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, sfImg, hdrImg, strip = []) {
   const page = pdf.addPage([PAGE_W, PAGE_H]);
 
   // Positions (y from page bottom)
   const HDR_BOT = 708, HDR_H = 140;        // TEAM IS header logo strip
-  const REL_Y   = 676;                      // "RELATÓRIO FINAL DE EXECUÇÃO"
+  const REL_Y = 676;                      // "RELATÓRIO FINAL DE EXECUÇÃO"
   const DOCBOX_Y = 644, DOCBOX_H = 26;     // document number border box
-  const AC_Y    = 532;                       // "A/C:" — just above client logo white box (BG_TOP-51)
-  const BG_BOT  = 215, BG_TOP = 583;       // capa.jpg background strip
-  const ELAB_Y  = 200;                      // elaborado/revisado/data line
-  const SVC1_Y  = 173, SVC2_Y = 161;       // services text lines
-  const FT_TOP  = 110;                      // footer top line
+  const AC_Y = 532;                       // "A/C:" — just above client logo white box (BG_TOP-51)
+  const BG_BOT = 215, BG_TOP = 583;       // capa.jpg background strip
+  const ELAB_Y = 200;                      // elaborado/revisado/data line
+  const SVC1_Y = 173, SVC2_Y = 161;       // services text lines
+  const FT_TOP = 110;                      // footer top line
 
   // doc number metrics — computed first so logo can match its width
   const dnFontSize = 18;
@@ -1358,82 +1365,82 @@ async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, s
   const dnX = (PAGE_W - dnW) / 2;
 
   // 1 — TEAM Industrial Services header logo (width = doc number block)
-  if(hdrImg){
+  if (hdrImg) {
     const logoW = dnW + 12;
     const logoH = logoW * (hdrImg.height / hdrImg.width);
     const hActH = Math.min(logoH, HDR_H);
     const hActW = hActH * (hdrImg.width / hdrImg.height);
-    page.drawImage(hdrImg, {x:(PAGE_W-hActW)/2, y:HDR_BOT, width:hActW, height:hActH});
+    page.drawImage(hdrImg, { x: (PAGE_W - hActW) / 2, y: HDR_BOT, width: hActW, height: hActH });
   }
 
   // 2 — "RELATÓRIO FINAL DE EXECUÇÃO" bold centered (smaller than doc number)
   const t1 = 'RELATÓRIO FINAL DE EXECUÇÃO';
-  page.drawText(t1, {x:(PAGE_W-fontBold.widthOfTextAtSize(t1,14))/2, y:REL_Y, size:14, font:fontBold, color:BLACK});
+  page.drawText(t1, { x: (PAGE_W - fontBold.widthOfTextAtSize(t1, 14)) / 2, y: REL_Y, size: 14, font: fontBold, color: BLACK });
 
   // 3 — Document number (larger) with thin left/right border lines
-  page.drawText(docNum, {x:dnX, y:DOCBOX_Y+5, size:dnFontSize, font:fontBold, color:BLACK});
-  page.drawLine({start:{x:dnX-6, y:DOCBOX_Y}, end:{x:dnX-6, y:DOCBOX_Y+DOCBOX_H}, thickness:0.8, color:BLACK});
-  page.drawLine({start:{x:dnX+dnW+6, y:DOCBOX_Y}, end:{x:dnX+dnW+6, y:DOCBOX_Y+DOCBOX_H}, thickness:0.8, color:BLACK});
+  page.drawText(docNum, { x: dnX, y: DOCBOX_Y + 5, size: dnFontSize, font: fontBold, color: BLACK });
+  page.drawLine({ start: { x: dnX - 6, y: DOCBOX_Y }, end: { x: dnX - 6, y: DOCBOX_Y + DOCBOX_H }, thickness: 0.8, color: BLACK });
+  page.drawLine({ start: { x: dnX + dnW + 6, y: DOCBOX_Y }, end: { x: dnX + dnW + 6, y: DOCBOX_Y + DOCBOX_H }, thickness: 0.8, color: BLACK });
 
   // 5 — capa.jpg background strip (full width)
-  if(bgImg){
-    page.drawImage(bgImg, {x:0, y:BG_BOT, width:PAGE_W, height:BG_TOP-BG_BOT});
+  if (bgImg) {
+    page.drawImage(bgImg, { x: 0, y: BG_BOT, width: PAGE_W, height: BG_TOP - BG_BOT });
   }
 
   // 5b — 5-photo strip at bottom of background area (square, margin-aligned)
-  if(strip.length > 0){
-    const photoSize = (PAGE_W - 2*MARGIN) / strip.length;
+  if (strip.length > 0) {
+    const photoSize = (PAGE_W - 2 * MARGIN) / strip.length;
     strip.forEach((img, i) => {
-      page.drawImage(img, {x:MARGIN + i*photoSize, y:BG_BOT, width:photoSize, height:photoSize});
+      page.drawImage(img, { x: MARGIN + i * photoSize, y: BG_BOT, width: photoSize, height: photoSize });
     });
   }
 
   // 6 — Client logo in white box (upper-left of background)
-  if(STATE.logoCliente){
-    try{
+  if (STATE.logoCliente) {
+    try {
       let img;
       const type = STATE.logoClienteType || 'image/png';
-      if(type === 'image/jpeg' || type === 'image/jpg') img = await pdf.embedJpg(STATE.logoCliente);
+      if (type === 'image/jpeg' || type === 'image/jpg') img = await pdf.embedJpg(STATE.logoCliente);
       else img = await pdf.embedPng(STATE.logoCliente);
       const maxW = 220, maxH = 130;
-      const sc = Math.min(maxW/img.width, maxH/img.height);
-      const cw = img.width*sc, ch = img.height*sc;
+      const sc = Math.min(maxW / img.width, maxH / img.height);
+      const cw = img.width * sc, ch = img.height * sc;
       const bx = MARGIN + 5, by = BG_TOP - maxH - 65;
-      page.drawRectangle({x:bx-6, y:by-6, width:maxW+12, height:maxH+12, color:rgb(1,1,1), borderColor:rgb(1,1,1), borderWidth:0});
-      page.drawImage(img, {x:bx+(maxW-cw)/2, y:by+(maxH-ch)/2, width:cw, height:ch});
-    }catch(e){ console.warn('logo cliente capa:', e); }
+      page.drawRectangle({ x: bx - 6, y: by - 6, width: maxW + 12, height: maxH + 12, color: rgb(1, 1, 1), borderColor: rgb(1, 1, 1), borderWidth: 0 });
+      page.drawImage(img, { x: bx + (maxW - cw) / 2, y: by + (maxH - ch) / 2, width: cw, height: ch });
+    } catch (e) { console.warn('logo cliente capa:', e); }
   }
 
   // 6b — "A/C:" drawn on top of background, just above client logo
-  page.drawText('A/C:', {x:MARGIN, y:AC_Y, size:9, font:fontBold, color:rgb(1,1,1)});
+  page.drawText('A/C:', { x: MARGIN, y: AC_Y, size: 9, font: fontBold, color: rgb(1, 1, 1) });
 
   // 7 — Elaborado / Revisado / Data line (space-between)
   const elab = $('capaElab').value.trim() || '____________________';
-  const rev  = $('capaRev').value.trim()  || '____________________';
-  const dt   = fmtDate($('capaData').value) || '__________';
-  const eSz  = 10;
+  const rev = $('capaRev').value.trim() || '____________________';
+  const dt = fmtDate($('capaData').value) || '__________';
+  const eSz = 10;
   const lblE = 'ELABORADO POR: ' + elab;
-  const lblR = 'REVISADO POR: '  + rev;
-  const lblD = 'DATA: '          + dt;
+  const lblR = 'REVISADO POR: ' + rev;
+  const lblD = 'DATA: ' + dt;
   const wE = fontReg.widthOfTextAtSize(lblE, eSz);
   const wR = fontReg.widthOfTextAtSize(lblR, eSz);
   const wD = fontReg.widthOfTextAtSize(lblD, eSz);
-  const gap = (PAGE_W - 2*MARGIN - wE - wR - wD) / 2;
-  page.drawText(lblE, {x:MARGIN,           y:ELAB_Y, size:eSz, font:fontReg, color:BLACK});
-  page.drawText(lblR, {x:MARGIN+wE+gap,    y:ELAB_Y, size:eSz, font:fontReg, color:BLACK});
-  page.drawText(lblD, {x:PAGE_W-MARGIN-wD, y:ELAB_Y, size:eSz, font:fontReg, color:BLACK});
+  const gap = (PAGE_W - 2 * MARGIN - wE - wR - wD) / 2;
+  page.drawText(lblE, { x: MARGIN, y: ELAB_Y, size: eSz, font: fontReg, color: BLACK });
+  page.drawText(lblR, { x: MARGIN + wE + gap, y: ELAB_Y, size: eSz, font: fontReg, color: BLACK });
+  page.drawText(lblD, { x: PAGE_W - MARGIN - wD, y: ELAB_Y, size: eSz, font: fontReg, color: BLACK });
 
   // 8 — Services text (two lines wrapped, black)
   const svcFull = 'Furos em Carga e Bloqueio | Reparo de Vazamentos | Usinagem de Campo | Reparo de Válvulas | Controle de Emissões | Torqueamento | Reparo com Compósitos | Inspeção | Conexões para Furo em Carga e Bloqueio | Abraçadeiras de Reparo | Conexões Especiais';
-  const svcLines = quebrarTexto(svcFull, fontReg, 9, PAGE_W - 2*MARGIN);
+  const svcLines = quebrarTexto(svcFull, fontReg, 9, PAGE_W - 2 * MARGIN);
   const svcYs = [SVC1_Y, SVC2_Y];
   svcLines.slice(0, 2).forEach((l, i) => {
-    page.drawText(l, {x:(PAGE_W-fontReg.widthOfTextAtSize(l,9))/2, y:svcYs[i], size:9, font:fontReg, color:BLACK});
+    page.drawText(l, { x: (PAGE_W - fontReg.widthOfTextAtSize(l, 9)) / 2, y: svcYs[i], size: 9, font: fontReg, color: BLACK });
   });
 
   // 9 — 3-column footer: address | SafetyFirst | phone/email/website
-  const colW3 = (PAGE_W - 2*MARGIN) / 3;
-  const addrX = MARGIN, sfX = MARGIN + colW3, ctX = MARGIN + 2*colW3;
+  const colW3 = (PAGE_W - 2 * MARGIN) / 3;
+  const addrX = MARGIN, sfX = MARGIN + colW3, ctX = MARGIN + 2 * colW3;
 
   // Left: address
   const addrLines = [
@@ -1444,41 +1451,41 @@ async function desenhaCapa(pdf, fontReg, fontBold, logoTeamPng, docNum, bgImg, s
     'Brasil - CEP: 12420-010',
   ];
   let ay = FT_TOP - 4;
-  for(const l of addrLines){
-    page.drawText(l, {x:addrX, y:ay, size:8.5, font:fontReg, color:BLACK});
+  for (const l of addrLines) {
+    page.drawText(l, { x: addrX, y: ay, size: 8.5, font: fontReg, color: BLACK });
     ay -= 13;
   }
 
   // Center: SafetyFirst logo
-  if(sfImg){
+  if (sfImg) {
     const sfMaxW = colW3 - 20, sfMaxH = 52;
-    const sc = Math.min(sfMaxW/sfImg.width, sfMaxH/sfImg.height);
-    const sw = sfImg.width*sc, sh = sfImg.height*sc;
-    page.drawImage(sfImg, {x:sfX+(colW3-sw)/2, y:FT_TOP-sh-8, width:sw, height:sh});
+    const sc = Math.min(sfMaxW / sfImg.width, sfMaxH / sfImg.height);
+    const sw = sfImg.width * sc, sh = sfImg.height * sc;
+    page.drawImage(sfImg, { x: sfX + (colW3 - sw) / 2, y: FT_TOP - sh - 8, width: sw, height: sh });
   }
 
   // Right: contact details — emails in TEAM_BLUE, others TEAM_GRAY
   const ctRows = [
-    ['+55 12 3645-9104',          'Main',    false],
-    ['+55 12 3648-1670',          'Office',  false],
+    ['+55 12 3645-9104', 'Main', false],
+    ['+55 12 3648-1670', 'Office', false],
     ['anderson.andrade@TeamInc.com', 'E-Mail', true],
-    ['carlos.estites@teaminc.com',   '',       true],
-    ['www.teaminc.com',            'Website', true],
+    ['carlos.estites@teaminc.com', '', true],
+    ['www.teaminc.com', 'Website', true],
   ];
   const labelColX = PAGE_W - MARGIN;
   let cy = FT_TOP - 4;
-  for(const [info, lbl, isEmail] of ctRows){
+  for (const [info, lbl, isEmail] of ctRows) {
     const clr = isEmail ? TEAM_BLUE : BLACK;
-    if(lbl) page.drawText(lbl, {x:labelColX - fontReg.widthOfTextAtSize(lbl,8.5), y:cy, size:8.5, font:fontReg, color:BLACK});
-    page.drawText(info, {x:ctX, y:cy, size:8.5, font:fontReg, color:clr});
+    if (lbl) page.drawText(lbl, { x: labelColX - fontReg.widthOfTextAtSize(lbl, 8.5), y: cy, size: 8.5, font: fontReg, color: BLACK });
+    page.drawText(info, { x: ctX, y: cy, size: 8.5, font: fontReg, color: clr });
     cy -= 13;
   }
 
   // Footer bottom line — edge-to-edge, black
-  page.drawLine({start:{x:0, y:20}, end:{x:PAGE_W, y:20}, thickness:0.8, color:BLACK});
+  page.drawLine({ start: { x: 0, y: 20 }, end: { x: PAGE_W, y: 20 }, thickness: 0.8, color: BLACK });
 }
 
-async function desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, tag){
+async function desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, tag) {
   const page = pdf.addPage([PAGE_W, PAGE_H]);
   desenhaCabecalhoRodape(page, fontReg, fontBold, logoTeamPng, docNum);
 
@@ -1486,105 +1493,105 @@ async function desenhaContracapa(pdf, fontReg, fontBold, logoTeamPng, docNum, ta
 
   // "RELATÓRIO FINAL DE EXECUÇÃO"
   const t1 = 'RELATÓRIO FINAL DE EXECUÇÃO';
-  page.drawText(t1, {x:(PAGE_W-fontBold.widthOfTextAtSize(t1,18))/2, y:cy+48, size:18, font:fontBold, color:BLACK});
+  page.drawText(t1, { x: (PAGE_W - fontBold.widthOfTextAtSize(t1, 18)) / 2, y: cy + 48, size: 18, font: fontBold, color: BLACK });
 
   // Document number with thin left/right border lines
   const dnW = fontBold.widthOfTextAtSize(docNum, 14);
   const dnX = (PAGE_W - dnW) / 2;
-  page.drawText(docNum, {x:dnX, y:cy+14, size:14, font:fontBold, color:BLACK});
-  page.drawLine({start:{x:dnX-6, y:cy+10}, end:{x:dnX-6, y:cy+32}, thickness:0.8, color:BLACK});
-  page.drawLine({start:{x:dnX+dnW+6, y:cy+10}, end:{x:dnX+dnW+6, y:cy+32}, thickness:0.8, color:BLACK});
+  page.drawText(docNum, { x: dnX, y: cy + 14, size: 14, font: fontBold, color: BLACK });
+  page.drawLine({ start: { x: dnX - 6, y: cy + 10 }, end: { x: dnX - 6, y: cy + 32 }, thickness: 0.8, color: BLACK });
+  page.drawLine({ start: { x: dnX + dnW + 6, y: cy + 10 }, end: { x: dnX + dnW + 6, y: cy + 32 }, thickness: 0.8, color: BLACK });
 
   // TAG
-  if(tag){
-    page.drawText(tag, {x:(PAGE_W-fontBold.widthOfTextAtSize(tag,18))/2, y:cy-20, size:18, font:fontBold, color:BLACK});
+  if (tag) {
+    page.drawText(tag, { x: (PAGE_W - fontBold.widthOfTextAtSize(tag, 18)) / 2, y: cy - 20, size: 18, font: fontBold, color: BLACK });
   }
 }
 
-async function desenhaIndice(pdf, fontReg, fontBold, logoTeamPng, docNum){
+async function desenhaIndice(pdf, fontReg, fontBold, logoTeamPng, docNum) {
   const page = pdf.addPage([PAGE_W, PAGE_H]);
   desenhaCabecalhoRodape(page, fontReg, fontBold, logoTeamPng, docNum);
 
   const label = 'INDEX';
-  page.drawText(label, {x:(PAGE_W-fontBold.widthOfTextAtSize(label,14))/2, y:PAGE_H-130, size:14, font:fontBold, color:BLACK});
+  page.drawText(label, { x: (PAGE_W - fontBold.widthOfTextAtSize(label, 14)) / 2, y: PAGE_H - 130, size: 14, font: fontBold, color: BLACK });
 
   const itens = [
-    ['1',  'SOLICITAÇÃO DE SERVIÇO'],
-    ['2',  'RELATÓRIO DIÁRIO DE OPERAÇÕES'],
-    ['3',  'RELATÓRIO DE EXECUÇÃO E REGISTRO DE INSTALAÇÃO'],
-    ['4',  'PROJETO'],
-    ['5',  'PROCEDIMENTOS'],
-    ['6',  'FICHA TÉCNICA'],
-    ['7',  'PDA'],
-    ['8',  'AVALIAÇÃO DE RISCO DO REPARO'],
-    ['9',  'CERTIFICADO DE GARANTIA'],
+    ['1', 'SOLICITAÇÃO DE SERVIÇO'],
+    ['2', 'RELATÓRIO DIÁRIO DE OPERAÇÕES'],
+    ['3', 'RELATÓRIO DE EXECUÇÃO E REGISTRO DE INSTALAÇÃO'],
+    ['4', 'PROJETO'],
+    ['5', 'PROCEDIMENTOS'],
+    ['6', 'FICHA TÉCNICA'],
+    ['7', 'PDA'],
+    ['8', 'AVALIAÇÃO DE RISCO DO REPARO'],
+    ['9', 'CERTIFICADO DE GARANTIA'],
     ['10', 'CERTIFICADOS DE QUALIFICAÇÃO DOS TÉCNICOS'],
   ];
   let y = PAGE_H - 175;
-  for(const [n, lbl] of itens){
-    page.drawText(n,   {x:MARGIN+30, y, size:13, font:fontBold, color:BLACK});
-    page.drawText(lbl, {x:MARGIN+65, y, size:13, font:fontBold, color:BLACK});
+  for (const [n, lbl] of itens) {
+    page.drawText(n, { x: MARGIN + 30, y, size: 13, font: fontBold, color: BLACK });
+    page.drawText(lbl, { x: MARGIN + 65, y, size: 13, font: fontBold, color: BLACK });
     y -= 22;
   }
 }
 
-async function desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, num, titulo){
+async function desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, num, titulo) {
   const page = pdf.addPage([PAGE_W, PAGE_H]);
   page.node.set(PDFName.of(SECAO_MARK), PDFNumber.of(Number(num)));
   desenhaCabecalhoRodape(page, fontReg, fontBold, logoTeamPng, docNum);
 
   // Section number + title at top-left below header, TEAM_BLUE bold
-  page.drawText(num+'  '+titulo, {x:MARGIN, y:PAGE_H-120, size:13, font:fontBold, color:TEAM_BLUE});
+  page.drawText(num + '  ' + titulo, { x: MARGIN, y: PAGE_H - 120, size: 13, font: fontBold, color: TEAM_BLUE });
 
   // "PAGINA EM BRANCO" centered
   const pb = 'PÁGINA EM BRANCO';
-  page.drawText(pb, {x:(PAGE_W-fontBold.widthOfTextAtSize(pb,11))/2, y:PAGE_H/2, size:11, font:fontBold, color:BLACK});
+  page.drawText(pb, { x: (PAGE_W - fontBold.widthOfTextAtSize(pb, 11)) / 2, y: PAGE_H / 2, size: 11, font: fontBold, color: BLACK });
 }
 
 // ov: valores que substituem os do formulario (usado pelo complemento PPCI: data, descricao,
 // normas, PFP). Chaves = ids dos campos (cgData, cgDescricao, cgNormas, cgPfpEsp, cgPfpComp) e 'pfp'.
-async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, ov = {}){
-  const val = id => (ov[id] !== undefined ? ov[id] : (($(id)||{}).value||''));
+async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, ov = {}) {
+  const val = id => (ov[id] !== undefined ? ov[id] : (($(id) || {}).value || ''));
 
-  function gerarCertif(){
+  function gerarCertif() {
     const data = val('cgData');
-    const plaqueta = (($('cgPlaqueta')||{}).value||'').trim();
-    if(!data) return plaqueta||'-';
-    const [yy,mm,dd] = data.split('-');
-    return dd+mm+yy+(plaqueta?'-'+plaqueta:'');
+    const plaqueta = (($('cgPlaqueta') || {}).value || '').trim();
+    if (!data) return plaqueta || '-';
+    const [yy, mm, dd] = data.split('-');
+    return dd + mm + yy + (plaqueta ? '-' + plaqueta : '');
   }
 
-  function desenhaHeaderCert(pg, pageNum){
-    const HY=PAGE_H-75, HH=68, logoColW=115, rightColW=115;
-    const midX=MARGIN+logoColW, rightX=PAGE_W-MARGIN-rightColW, fx=rightX+8;
-    pg.drawRectangle({x:MARGIN, y:HY, width:PAGE_W-2*MARGIN, height:HH, borderColor:BLACK, borderWidth:0.8, color:rgb(1,1,1)});
-    pg.drawLine({start:{x:midX,y:HY}, end:{x:midX,y:HY+HH}, thickness:0.8, color:BLACK});
-    pg.drawLine({start:{x:rightX,y:HY}, end:{x:rightX,y:HY+HH}, thickness:0.8, color:BLACK});
-    const lsc = Math.min((logoColW-10)/logoTeamPng.width, (HH-10)/logoTeamPng.height);
-    const lw = logoTeamPng.width*lsc, lh = logoTeamPng.height*lsc;
-    pg.drawImage(logoTeamPng, {x:MARGIN+(logoColW-lw)/2, y:HY+(HH-lh)/2, width:lw, height:lh});
-    const ct='Formulário do Sistema de Qualidade Filial';
-    pg.drawText(ct, {x:midX+(rightX-midX-fontBold.widthOfTextAtSize(ct,9))/2, y:HY+(HH-9)/2, size:9, font:fontBold, color:TEAM_GRAY});
-    pg.drawText('FORM 8701-123', {x:fx, y:HY+53, size:8.5, font:fontBold, color:BLACK});
-    pg.drawLine({start:{x:rightX,y:HY+43}, end:{x:PAGE_W-MARGIN,y:HY+43}, thickness:0.4, color:BLACK});
-    pg.drawText('Rev: 0', {x:fx, y:HY+29, size:8.5, font:fontReg, color:BLACK});
-    pg.drawLine({start:{x:rightX,y:HY+19}, end:{x:PAGE_W-MARGIN,y:HY+19}, thickness:0.4, color:BLACK});
-    pg.drawText('Página '+pageNum+' de 2', {x:fx, y:HY+6, size:8.5, font:fontReg, color:BLACK});
-    const titleY=HY-28;
-    pg.drawRectangle({x:MARGIN, y:titleY, width:PAGE_W-2*MARGIN, height:25, borderColor:BLACK, borderWidth:0.8, color:rgb(1,1,1)});
-    const t='CERTIFICADO DE CONFORMIDADE DE REPARO COMPÓSITO';
-    pg.drawText(t, {x:(PAGE_W-fontBold.widthOfTextAtSize(t,12))/2, y:titleY+7, size:12, font:fontBold, color:BLACK});
+  function desenhaHeaderCert(pg, pageNum) {
+    const HY = PAGE_H - 75, HH = 68, logoColW = 115, rightColW = 115;
+    const midX = MARGIN + logoColW, rightX = PAGE_W - MARGIN - rightColW, fx = rightX + 8;
+    pg.drawRectangle({ x: MARGIN, y: HY, width: PAGE_W - 2 * MARGIN, height: HH, borderColor: BLACK, borderWidth: 0.8, color: rgb(1, 1, 1) });
+    pg.drawLine({ start: { x: midX, y: HY }, end: { x: midX, y: HY + HH }, thickness: 0.8, color: BLACK });
+    pg.drawLine({ start: { x: rightX, y: HY }, end: { x: rightX, y: HY + HH }, thickness: 0.8, color: BLACK });
+    const lsc = Math.min((logoColW - 10) / logoTeamPng.width, (HH - 10) / logoTeamPng.height);
+    const lw = logoTeamPng.width * lsc, lh = logoTeamPng.height * lsc;
+    pg.drawImage(logoTeamPng, { x: MARGIN + (logoColW - lw) / 2, y: HY + (HH - lh) / 2, width: lw, height: lh });
+    const ct = 'Formulário do Sistema de Qualidade Filial';
+    pg.drawText(ct, { x: midX + (rightX - midX - fontBold.widthOfTextAtSize(ct, 9)) / 2, y: HY + (HH - 9) / 2, size: 9, font: fontBold, color: TEAM_GRAY });
+    pg.drawText('FORM 8701-123', { x: fx, y: HY + 53, size: 8.5, font: fontBold, color: BLACK });
+    pg.drawLine({ start: { x: rightX, y: HY + 43 }, end: { x: PAGE_W - MARGIN, y: HY + 43 }, thickness: 0.4, color: BLACK });
+    pg.drawText('Rev: 0', { x: fx, y: HY + 29, size: 8.5, font: fontReg, color: BLACK });
+    pg.drawLine({ start: { x: rightX, y: HY + 19 }, end: { x: PAGE_W - MARGIN, y: HY + 19 }, thickness: 0.4, color: BLACK });
+    pg.drawText('Página ' + pageNum + ' de 2', { x: fx, y: HY + 6, size: 8.5, font: fontReg, color: BLACK });
+    const titleY = HY - 28;
+    pg.drawRectangle({ x: MARGIN, y: titleY, width: PAGE_W - 2 * MARGIN, height: 25, borderColor: BLACK, borderWidth: 0.8, color: rgb(1, 1, 1) });
+    const t = 'CERTIFICADO DE CONFORMIDADE DE REPARO COMPÓSITO';
+    pg.drawText(t, { x: (PAGE_W - fontBold.widthOfTextAtSize(t, 12)) / 2, y: titleY + 7, size: 12, font: fontBold, color: BLACK });
     return titleY;
   }
 
-  const availW = PAGE_W - 2*MARGIN;
+  const availW = PAGE_W - 2 * MARGIN;
 
-  function field(pg, label, value, x, fy, lineEnd){
+  function field(pg, label, value, x, fy, lineEnd) {
     const lbW = fontBold.widthOfTextAtSize(label, 9);
-    pg.drawText(label, {x, y:fy, size:9, font:fontBold, color:BLACK});
+    pg.drawText(label, { x, y: fy, size: 9, font: fontBold, color: BLACK });
     const vx = x + lbW + 4;
-    if(value) pg.drawText(String(value), {x:vx, y:fy, size:9, font:fontReg, color:BLACK});
-    pg.drawLine({start:{x:vx, y:fy-2}, end:{x:lineEnd, y:fy-2}, thickness:0.4, color:BLACK});
+    if (value) pg.drawText(String(value), { x: vx, y: fy, size: 9, font: fontReg, color: BLACK });
+    pg.drawLine({ start: { x: vx, y: fy - 2 }, end: { x: lineEnd, y: fy - 2 }, thickness: 0.4, color: BLACK });
   }
 
   // ---- PAGINA 1 ----
@@ -1592,110 +1599,110 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, o
   const titleY1 = desenhaHeaderCert(page, '1');
 
   let y = titleY1 - 18;
-  for(const l of [
+  for (const l of [
     'Team do Brasil - Serviços Industriais Ltda',
     'Avenida Nossa Senhora do Bom Sucesso,',
     '3344 - Modulo 5 - Alto do Cardoso -',
     'Pindamonhangaba-SP - CEP: 12422-010',
-  ]){
-    page.drawText(l, {x:(PAGE_W-fontReg.widthOfTextAtSize(l,9))/2, y, size:9, font:fontReg, color:BLACK});
+  ]) {
+    page.drawText(l, { x: (PAGE_W - fontReg.widthOfTextAtSize(l, 9)) / 2, y, size: 9, font: fontReg, color: BLACK });
     y -= 13;
   }
   y -= 10;
 
-  const LX = MARGIN, MX = PAGE_W/2 + 8, LEnd = PAGE_W/2 - 4, REnd = PAGE_W - MARGIN;
+  const LX = MARGIN, MX = PAGE_W / 2 + 8, LEnd = PAGE_W / 2 - 4, REnd = PAGE_W - MARGIN;
 
-  field(page, 'Cliente:',    $('cgCliente').value,  LX, y, LEnd);
-  field(page, 'Data:',       fmtDate(val('cgData'))||'', MX, y, REnd);
+  field(page, 'Cliente:', $('cgCliente').value, LX, y, LEnd);
+  field(page, 'Data:', fmtDate(val('cgData')) || '', MX, y, REnd);
   y -= 19;
-  field(page, 'Endereco:',   $('cgEndereco').value, LX, y, LEnd);
+  field(page, 'Endereco:', $('cgEndereco').value, LX, y, LEnd);
   field(page, 'Contrato #:', $('cgContrato').value, MX, y, REnd);
   y -= 19;
-  page.drawLine({start:{x:LX, y:y-2}, end:{x:LEnd, y:y-2}, thickness:0.4, color:BLACK});
-  field(page, 'Ref #:',      $('cgPO').value,       MX, y, REnd);
+  page.drawLine({ start: { x: LX, y: y - 2 }, end: { x: LEnd, y: y - 2 }, thickness: 0.4, color: BLACK });
+  field(page, 'Ref #:', $('cgPO').value, MX, y, REnd);
   y -= 19;
-  page.drawLine({start:{x:LX, y:y-2}, end:{x:LEnd, y:y-2}, thickness:0.4, color:BLACK});
-  field(page, 'Job #:',      $('cgTeam').value,     MX, y, REnd);
+  page.drawLine({ start: { x: LX, y: y - 2 }, end: { x: LEnd, y: y - 2 }, thickness: 0.4, color: BLACK });
+  field(page, 'Job #:', $('cgTeam').value, MX, y, REnd);
   y -= 21;
 
   const cw3 = availW / 3;
-  field(page, 'Certif.No.:', gerarCertif(),          LX,          y, LX+cw3-4);
-  field(page, 'Lot No.:',    $('cgSerial').value,    LX+cw3+4,    y, LX+2*cw3-4);
-  field(page, 'Quant.:',     $('cgQuant').value||'', LX+2*cw3+4,  y, REnd);
+  field(page, 'Certif.No.:', gerarCertif(), LX, y, LX + cw3 - 4);
+  field(page, 'Lot No.:', $('cgSerial').value, LX + cw3 + 4, y, LX + 2 * cw3 - 4);
+  field(page, 'Quant.:', $('cgQuant').value || '', LX + 2 * cw3 + 4, y, REnd);
   y -= 21;
 
   const descLabel = 'Descrição:';
   const descLbW = fontBold.widthOfTextAtSize(descLabel, 9);
-  page.drawText(descLabel, {x:LX, y, size:9, font:fontBold, color:BLACK});
+  page.drawText(descLabel, { x: LX, y, size: 9, font: fontBold, color: BLACK });
   const descVx = LX + descLbW + 4;
-  const descLines = quebrarTexto(val('cgDescricao'), fontReg, 9, REnd-descVx).slice(0,2);
-  if(descLines[0]) page.drawText(descLines[0], {x:descVx, y, size:9, font:fontReg, color:BLACK});
-  page.drawLine({start:{x:descVx, y:y-2}, end:{x:REnd, y:y-2}, thickness:0.4, color:BLACK});
-  if(descLines[1]){
+  const descLines = quebrarTexto(val('cgDescricao'), fontReg, 9, REnd - descVx).slice(0, 2);
+  if (descLines[0]) page.drawText(descLines[0], { x: descVx, y, size: 9, font: fontReg, color: BLACK });
+  page.drawLine({ start: { x: descVx, y: y - 2 }, end: { x: REnd, y: y - 2 }, thickness: 0.4, color: BLACK });
+  if (descLines[1]) {
     y -= 14;
-    page.drawText(descLines[1], {x:descVx, y, size:9, font:fontReg, color:BLACK});
-    page.drawLine({start:{x:descVx, y:y-2}, end:{x:REnd, y:y-2}, thickness:0.4, color:BLACK});
+    page.drawText(descLines[1], { x: descVx, y, size: 9, font: fontReg, color: BLACK });
+    page.drawLine({ start: { x: descVx, y: y - 2 }, end: { x: REnd, y: y - 2 }, thickness: 0.4, color: BLACK });
   }
   y -= 22;
 
   const certPar = 'Certificamos que o serviço/material e/ou peças fornecidos conforme o pedido de compra estão de acordo com os termos e especificações nele contidos.';
-  for(const l of quebrarTexto(certPar, fontBold, 9, availW)){
-    page.drawText(l, {x:LX, y, size:9, font:fontBold, color:BLACK}); y -= 12;
+  for (const l of quebrarTexto(certPar, fontBold, 9, availW)) {
+    page.drawText(l, { x: LX, y, size: 9, font: fontBold, color: BLACK }); y -= 12;
   }
   y -= 8;
 
   const termsLabel = 'Termos/Especificações: ';
   const termsBody = 'Serviço projetado e calculado em atendimento às normas regulamentadoras e às condições de projeto dos equipamentos, especificado pelo cliente. Atestamos para devidos fins que o serviço de instalação do projeto desenvolvido pela Team Industrial Services - Ltda, entre as condições de temperatura e pressão de operação e projeto informados, se apresenta eficaz e com garantia contratual dentro do período de 5 anos a partir da data de instalação. Para futuras revalidações e recertificações de reparos realizados é necessário que um técnico Team avalie o estado do reparo no local da execução (In loco) do mesmo.';
   const lbW9 = fontBold.widthOfTextAtSize(termsLabel, 9);
-  page.drawText(termsLabel, {x:LX, y, size:9, font:fontBold, color:BLACK});
+  page.drawText(termsLabel, { x: LX, y, size: 9, font: fontBold, color: BLACK });
   const firstMaxW = availW - lbW9;
   const bWords = termsBody.split(/\s+/);
   let firstSeg = '', bIdx = 0;
-  for(; bIdx < bWords.length; bIdx++){
-    const t = firstSeg ? firstSeg+' '+bWords[bIdx] : bWords[bIdx];
-    if(fontReg.widthOfTextAtSize(t, 9) <= firstMaxW) firstSeg = t;
+  for (; bIdx < bWords.length; bIdx++) {
+    const t = firstSeg ? firstSeg + ' ' + bWords[bIdx] : bWords[bIdx];
+    if (fontReg.widthOfTextAtSize(t, 9) <= firstMaxW) firstSeg = t;
     else break;
   }
-  if(firstSeg) page.drawText(firstSeg, {x:LX+lbW9, y, size:9, font:fontReg, color:BLACK});
+  if (firstSeg) page.drawText(firstSeg, { x: LX + lbW9, y, size: 9, font: fontReg, color: BLACK });
   y -= 12;
   const remBody = bWords.slice(bIdx).join(' ');
-  for(const l of quebrarTexto(remBody, fontReg, 9, availW)){
-    page.drawText(l, {x:LX, y, size:9, font:fontReg, color:BLACK}); y -= 12;
+  for (const l of quebrarTexto(remBody, fontReg, 9, availW)) {
+    page.drawText(l, { x: LX, y, size: 9, font: fontReg, color: BLACK }); y -= 12;
   }
   y -= 16;
 
   const specRows = [
-    ['TAG EQUIPAMENTO:',               $('cgTag').value||''],
-    ['PRESSÃO DE PROJETO:',            $('cgPProj').value||''],
-    ['PRESSÃO OPERAÇÃO:',              $('cgPOper').value||''],
-    ['TEMPERATURA DE PROJETO:',        ($('cgTProj').value ? $('cgTProj').value+' C' : '')],
-    ['TEMPERATURA DE OPERAÇÃO:',       ($('cgTOper').value ? $('cgTOper').value+' C' : '')],
-    ['NORMAS APLICÁVEIS:',             val('cgNormas')],
-    ['ENQUADRAMENTO NA CERTIFICADORA ABS:', (($('cgAbsText')||{}).value)||''],
-    ['VIDA ÚTIL DO REPARO PROJETADO:', ($('cgVida').value ? $('cgVida').value+' anos' : '')],
+    ['TAG EQUIPAMENTO:', $('cgTag').value || ''],
+    ['PRESSÃO DE PROJETO:', $('cgPProj').value || ''],
+    ['PRESSÃO OPERAÇÃO:', $('cgPOper').value || ''],
+    ['TEMPERATURA DE PROJETO:', ($('cgTProj').value ? $('cgTProj').value + ' C' : '')],
+    ['TEMPERATURA DE OPERAÇÃO:', ($('cgTOper').value ? $('cgTOper').value + ' C' : '')],
+    ['NORMAS APLICÁVEIS:', val('cgNormas')],
+    ['ENQUADRAMENTO NA CERTIFICADORA ABS:', (($('cgAbsText') || {}).value) || ''],
+    ['VIDA ÚTIL DO REPARO PROJETADO:', ($('cgVida').value ? $('cgVida').value + ' anos' : '')],
   ];
   const maxSpecLW = Math.max(...specRows.map(([l]) => fontBold.widthOfTextAtSize(l, 8.5)));
   const valAreaW = 175;
   const specX = (PAGE_W - maxSpecLW - valAreaW) / 2;
   const valX = specX + maxSpecLW + 6;
-  for(const [lbl, val] of specRows){
+  for (const [lbl, val] of specRows) {
     const lw = fontBold.widthOfTextAtSize(lbl, 8.5);
-    page.drawText(lbl, {x: specX + maxSpecLW - lw, y, size:8.5, font:fontBold, color:BLACK});
-    page.drawText(val, {x: valX,                   y, size:8.5, font:fontReg,  color:BLACK});
+    page.drawText(lbl, { x: specX + maxSpecLW - lw, y, size: 8.5, font: fontBold, color: BLACK });
+    page.drawText(val, { x: valX, y, size: 8.5, font: fontReg, color: BLACK });
     y -= 13;
   }
   y -= 2;
 
   // PFP e' automatico: decorre da selecao do Certificado Jotun Jotachar na Ficha Tecnica
   const pfp = ov.pfp || (document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]:checked') ? 'SIM' : 'NAO');
-  const simMark = pfp==='SIM' ? '( X )' : '(   )';
-  const naoMark = pfp!=='SIM' ? '( X )' : '(   )';
-  const esp  = val('cgPfpEsp');
+  const simMark = pfp === 'SIM' ? '( X )' : '(   )';
+  const naoMark = pfp !== 'SIM' ? '( X )' : '(   )';
+  const esp = val('cgPfpEsp');
   const comp = val('cgPfpComp');
-  const espTxt  = esp  ? esp+' mm'  : '';
-  const compTxt = comp ? comp+' mm' : '';
-  const pfpTxt = 'FOI REALIZADO APLICAÇÃO DE PFP:   '+simMark+' SIM   '+naoMark+' NÃO        ESPESSURA: '+espTxt+'        COMP.: '+compTxt;
-  page.drawText(pfpTxt, {x:(PAGE_W-fontReg.widthOfTextAtSize(pfpTxt,8.5))/2, y, size:8.5, font:fontReg, color:BLACK});
+  const espTxt = esp ? esp + ' mm' : '';
+  const compTxt = comp ? comp + ' mm' : '';
+  const pfpTxt = 'FOI REALIZADO APLICAÇÃO DE PFP:   ' + simMark + ' SIM   ' + naoMark + ' NÃO        ESPESSURA: ' + espTxt + '        COMP.: ' + compTxt;
+  page.drawText(pfpTxt, { x: (PAGE_W - fontReg.widthOfTextAtSize(pfpTxt, 8.5)) / 2, y, size: 8.5, font: fontReg, color: BLACK });
 
   // ---- PAGINA 2 ----
   const page2 = pdf.addPage([PAGE_W, PAGE_H]);
@@ -1708,74 +1715,74 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, o
   const halfW = tblW / 2;
   const photoAreaH = tblH - lblRowH;
 
-  page2.drawRectangle({x:tblX, y:tblTop-tblH, width:tblW, height:tblH, borderColor:BLACK, borderWidth:0.8, color:rgb(1,1,1)});
-  page2.drawLine({start:{x:tblX+halfW, y:tblTop-tblH}, end:{x:tblX+halfW, y:tblTop}, thickness:0.8, color:BLACK});
+  page2.drawRectangle({ x: tblX, y: tblTop - tblH, width: tblW, height: tblH, borderColor: BLACK, borderWidth: 0.8, color: rgb(1, 1, 1) });
+  page2.drawLine({ start: { x: tblX + halfW, y: tblTop - tblH }, end: { x: tblX + halfW, y: tblTop }, thickness: 0.8, color: BLACK });
   const lblY = tblTop - tblH + lblRowH;
-  page2.drawLine({start:{x:tblX, y:lblY}, end:{x:tblX+tblW, y:lblY}, thickness:0.8, color:BLACK});
+  page2.drawLine({ start: { x: tblX, y: lblY }, end: { x: tblX + tblW, y: lblY }, thickness: 0.8, color: BLACK });
 
-  const lbl1='Antes da Execução', lbl2='Depois da Execução';
-  page2.drawText(lbl1, {x:tblX+(halfW-fontReg.widthOfTextAtSize(lbl1,10))/2, y:tblTop-tblH+7, size:10, font:fontReg, color:BLACK});
-  page2.drawText(lbl2, {x:tblX+halfW+(halfW-fontReg.widthOfTextAtSize(lbl2,10))/2, y:tblTop-tblH+7, size:10, font:fontReg, color:BLACK});
+  const lbl1 = 'Antes da Execução', lbl2 = 'Depois da Execução';
+  page2.drawText(lbl1, { x: tblX + (halfW - fontReg.widthOfTextAtSize(lbl1, 10)) / 2, y: tblTop - tblH + 7, size: 10, font: fontReg, color: BLACK });
+  page2.drawText(lbl2, { x: tblX + halfW + (halfW - fontReg.widthOfTextAtSize(lbl2, 10)) / 2, y: tblTop - tblH + 7, size: 10, font: fontReg, color: BLACK });
 
-  async function desenhaFoto2(buf, tipo, colX){
-    if(!buf) return;
-    try{
-      const img = tipo&&tipo.includes('png')
+  async function desenhaFoto2(buf, tipo, colX) {
+    if (!buf) return;
+    try {
+      const img = tipo && tipo.includes('png')
         ? await pdf.embedPng(new Uint8Array(buf))
         : await pdf.embedJpg(new Uint8Array(buf));
-      const d = img.scaleToFit(halfW-16, photoAreaH-16);
-      page2.drawImage(img, {x:colX+(halfW-d.width)/2, y:lblY+(photoAreaH-d.height)/2, width:d.width, height:d.height});
-    }catch(e){ console.error('foto:', e); }
+      const d = img.scaleToFit(halfW - 16, photoAreaH - 16);
+      page2.drawImage(img, { x: colX + (halfW - d.width) / 2, y: lblY + (photoAreaH - d.height) / 2, width: d.width, height: d.height });
+    } catch (e) { console.error('foto:', e); }
   }
-  await desenhaFoto2(STATE.fotoAntes,  STATE.fotoAntesType,  tblX);
-  await desenhaFoto2(STATE.fotoDepois, STATE.fotoDepoisType, tblX+halfW);
+  await desenhaFoto2(STATE.fotoAntes, STATE.fotoAntesType, tblX);
+  await desenhaFoto2(STATE.fotoDepois, STATE.fotoDepoisType, tblX + halfW);
 
-  const gerenteNome = ($('cgGerente')||{}).value || '';
+  const gerenteNome = ($('cgGerente') || {}).value || '';
 
   // Layout inline: "Assinatura: [imagem] - Nome"
   let sy = 115;
   const preTxt = 'Assinatura: ';
-  const preW   = fontReg.widthOfTextAtSize(preTxt, 9);
-  page2.drawText(preTxt, {x:MARGIN, y:sy, size:9, font:fontReg, color:BLACK});
+  const preW = fontReg.widthOfTextAtSize(preTxt, 9);
+  page2.drawText(preTxt, { x: MARGIN, y: sy, size: 9, font: fontReg, color: BLACK });
 
   let curX = MARGIN + preW;
-  if(STATE.assinatura){
-    try{
+  if (STATE.assinatura) {
+    try {
       const sigImg = STATE.assinaturaType && STATE.assinaturaType.includes('png')
         ? await pdf.embedPng(new Uint8Array(STATE.assinatura))
         : await pdf.embedJpg(new Uint8Array(STATE.assinatura));
       const sigMaxW = 110, sigMaxH = 22;
-      const sc = Math.min(sigMaxW/sigImg.width, sigMaxH/sigImg.height);
-      const sw = sigImg.width*sc, sh = sigImg.height*sc;
-      page2.drawImage(sigImg, {x:curX, y:sy-2, width:sw, height:sh});
+      const sc = Math.min(sigMaxW / sigImg.width, sigMaxH / sigImg.height);
+      const sw = sigImg.width * sc, sh = sigImg.height * sc;
+      page2.drawImage(sigImg, { x: curX, y: sy - 2, width: sw, height: sh });
       curX += sw + 5;
-    }catch(e){ console.error('assinatura cert:', e); }
+    } catch (e) { console.error('assinatura cert:', e); }
   }
-  if(gerenteNome.trim()){
-    page2.drawText('- ' + gerenteNome.trim(), {x:curX, y:sy, size:9, font:fontBold, color:BLACK});
+  if (gerenteNome.trim()) {
+    page2.drawText('- ' + gerenteNome.trim(), { x: curX, y: sy, size: 9, font: fontBold, color: BLACK });
   }
-  page2.drawLine({start:{x:MARGIN, y:sy-3}, end:{x:MARGIN+310, y:sy-3}, thickness:0.5, color:BLACK});
+  page2.drawLine({ start: { x: MARGIN, y: sy - 3 }, end: { x: MARGIN + 310, y: sy - 3 }, thickness: 0.5, color: BLACK });
   sy -= 24;
-  page2.drawText('Cargo: ', {x:MARGIN, y:sy, size:9, font:fontReg, color:BLACK});
-  page2.drawLine({start:{x:MARGIN+44, y:sy-2}, end:{x:MARGIN+310, y:sy-2}, thickness:0.5, color:BLACK});
-  if(($('cgCargo')||{}).value)
-    page2.drawText($('cgCargo').value, {x:MARGIN+50, y:sy, size:9, font:fontReg, color:BLACK});
+  page2.drawText('Cargo: ', { x: MARGIN, y: sy, size: 9, font: fontReg, color: BLACK });
+  page2.drawLine({ start: { x: MARGIN + 44, y: sy - 2 }, end: { x: MARGIN + 310, y: sy - 2 }, thickness: 0.5, color: BLACK });
+  if (($('cgCargo') || {}).value)
+    page2.drawText($('cgCargo').value, { x: MARGIN + 50, y: sy, size: 9, font: fontReg, color: BLACK });
 }
 
-function quebrarTexto(txt, font, size, maxW){
+function quebrarTexto(txt, font, size, maxW) {
   const palavras = txt.split(/\s+/);
   const linhas = [];
   let atual = '';
-  for(const p of palavras){
+  for (const p of palavras) {
     const test = atual ? atual + ' ' + p : p;
-    if(font.widthOfTextAtSize(test, size) > maxW){
-      if(atual) linhas.push(atual);
+    if (font.widthOfTextAtSize(test, size) > maxW) {
+      if (atual) linhas.push(atual);
       atual = p;
-    }else{
+    } else {
       atual = test;
     }
   }
-  if(atual) linhas.push(atual);
+  if (atual) linhas.push(atual);
   return linhas;
 }
 
