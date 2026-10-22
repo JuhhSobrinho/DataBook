@@ -280,19 +280,24 @@ Não há autosave em `localStorage` — o único uso de `localStorage` no projet
 
 ## 11. PWA / Service Worker (`sw.js`)
 
-Estratégia **Cache First**: tudo que já está no cache (`databook-v2`) é servido direto, sem ir à rede — inclusive `main.js`, `draft.js` e o HTML do formulário.
+Estratégia **rede primeiro, com cache como reserva** (`redePrimeiro()` em `sw.js`):
+
+- **Online:** toda requisição do app (HTML, JS, CSS, `Model/*.json`) vai ao servidor com `cache:'no-cache'`, ou seja, uma requisição *condicional*: se o arquivo não mudou o servidor responde 304 (nada é baixado de novo, mesmo para os ~12MB do `assets-tecnicos.json`); se mudou, traz a versão nova. A cópia do cache offline é atualizada, e só é regravada quando o `ETag`/`Last-Modified` mudou.
+- **Offline:** serve a última cópia guardada. O primeiro acesso online guarda tudo (`CORE_ASSETS` no install; `MODEL_ASSETS` em background).
 
 ```js
-const CACHE_NAME = 'databook-v2';
-const CORE_ASSETS = [ /* html, css, js, manifest, icones */ ];   // cacheados no install
-const MODEL_ASSETS = [ /* Model/assets-*.json */ ];              // cacheados em background, depois do activate
+const CACHE_NAME = 'databook-cache';   // nome FIXO de proposito
+const CORE_ASSETS = [ /* html, css, js, manifest, icones */ ];   // baixados no install
+const MODEL_ASSETS = [ /* Model/assets-*.json */ ];              // baixados em background se ainda nao estiverem no cache
 ```
 
-**Gotcha importante:** se você editar `main.js`, `draft.js`, o HTML ou qualquer `Model/assets-*.json`, usuários que já instalaram o PWA (ou que só visitaram uma vez e o navegador registrou o SW) **não vão ver a mudança** até que:
-1. O `CACHE_NAME` seja incrementado (`databook-v2` → `databook-v3`, por exemplo) — isso força o `activate` a apagar o cache antigo e recachear tudo.
-2. Ou o usuário force um hard-refresh / limpe o cache do site manualmente.
+**O que isso significa na prática:** depois de publicar qualquer alteração (código, HTML, CSS ou um `Model/assets-*.json` novo), basta **abrir/recarregar o app uma vez** para vir a versão nova — não é mais preciso trocar `CACHE_NAME` nem limpar o cache do dispositivo. O nome do cache é fixo; só mude se quiser descartar todo o cache offline. Se criar um arquivo novo que o app precise offline, inclua-o em `CORE_ASSETS` (ou `MODEL_ASSETS`).
 
-Ou seja: **toda vez que alterar algo em `CORE_ASSETS` (html/css/js) ou quiser forçar a atualização de um `Model/assets-*.json`, bump o `CACHE_NAME` em `sw.js`.** Esquecer esse passo é a causa mais provável de "mudei o código mas não aparece" em produção (GitHub Pages).
+**Aviso de versão nova:** quando o próprio `sw.js` muda, o novo Service Worker assume o controle e a página mostra a barra "Nova versão do DataBook disponível" (`#avisoAtualizacao` em `index-form-databook.html`), com o botão "Atualizar agora" — ela não recarrega sozinha para não perder um book que esteja sendo preenchido. O app também consulta se há `sw.js` novo sempre que a aba volta a ficar visível, e registra o SW com `updateViaCache:'none'` para essa consulta nunca usar uma cópia velha do cache HTTP.
+
+**Limite conhecido:** se você publicar só mudanças em arquivos que não são o `sw.js`, quem já estiver com o app **aberto** só enxerga a versão nova ao recarregar (a barra de aviso depende de o `sw.js` mudar). Quem abre/reabre o app já pega a nova.
+
+**Histórico (migração):** até a versão `databook-v8` a estratégia era *Cache First* com nome de cache versionado, o que exigia trocar o nome a cada alteração. Na transição de uma versão antiga para esta, o dispositivo precisa de **uma** atualização manual da página (a barra de aviso aparece sozinha; ou Ctrl+F5) — daí em diante é automático.
 
 ---
 
@@ -330,7 +335,7 @@ Ou seja: **toda vez que alterar algo em `CORE_ASSETS` (html/css/js) ou quiser fo
 | Mudar a senha de acesso | `SENHA_HASH` em `index.html` |
 | Mudar tema/cores da interface | `View/styles/style-global.css` |
 | Mudar o que entra no rascunho `.json` | `Controller/draft.js` |
-| Publicar uma alteração e garantir que usuários do PWA recebam | Bump `CACHE_NAME` em `sw.js` ([seção 11](#11-pwa--service-worker-swjs)) |
+| Publicar uma alteração para os usuários do PWA | Nada especial: é só publicar; quem abrir/recarregar o app recebe a versão nova ([seção 11](#11-pwa--service-worker-swjs)) |
 
 ---
 

@@ -209,6 +209,24 @@ section.step {
     box-shadow: 0 1px 4px rgba(0,0,0,.07)
 }
 
+/* Aviso de nova versao do app (Service Worker) */
+.aviso-atualizacao {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    background: var(--team-blue);
+    color: #fff;
+    font-size: 13px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+}
+.aviso-atualizacao .btn { background: #fff; color: var(--team-blue); border: 1.5px solid #fff; padding: 5px 12px }
+.aviso-atualizacao .btn-outline { background: transparent; color: #fff }
+
 /* Campos que nao podem passar batido (cliente e data do certificado): vermelhos enquanto vazios */
 .field input.campo-vazio {
     border-color: #d32f2f !important;
