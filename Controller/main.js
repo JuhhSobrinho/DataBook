@@ -7,7 +7,7 @@ async function getAsset(cat) {
   }
   return ASSETS_CACHE[cat];
 }
-const STATE = { uploads: {}, uploadNames: {}, logoCliente: null, logoClienteType: null, fotoAntes: null, fotoAntesType: null, fotoDepois: null, fotoDepoisType: null, assinatura: null, assinaturaType: null, bookBase: null, bookBaseNome: null, ppci: null, logoClientePadrao: false };
+const STATE = { uploads: {}, uploadNames: {}, logoCliente: null, logoClienteType: null, fotoAntes: null, fotoAntesType: null, fotoDepois: null, fotoDepoisType: null, assinatura: null, assinaturaType: null, bookBase: null, bookBaseNome: null, ppci: null, logoClientePadrao: false, memorial: null };
 
 function b64ToBytes(b64) {
   const bin = atob(b64);
@@ -68,31 +68,6 @@ function anosTxt(v) {
   if (!v) return '';
   if (!/^\d+([.,]\d+)?$/.test(v)) return v;
   return v + (parseFloat(v.replace(',', '.')) === 1 ? ' ano' : ' anos');
-}
-
-// Le o memorial de calculo (PDF com camada de texto) e devolve:
-//   vida     -> "Design Lifetime" (anos)                     (vida util do reparo)
-//   local    -> "Defect Location": 'external' | 'internal'
-//   garantia -> '1' se a corrosao e interna, '5' se e externa
-// Campos que nao forem encontrados ficam null; sem texto (scan) devolve {semTexto:true}.
-async function extrairDadosMemorial(buffer) {
-  if (!window.pdfjsLib) return null;
-  const doc = await pdfjsLib.getDocument({ data: _toU8(buffer) }).promise;
-  let texto = '';
-  for (let i = 1; i <= Math.min(doc.numPages, 40); i++) {
-    const tc = await (await doc.getPage(i)).getTextContent();
-    texto += ' ' + tc.items.map(x => x.str).join(' ');
-  }
-  texto = texto.replace(/\s+/g, ' ');
-  if (texto.trim().length < 50) return { semTexto: true, vida: null, local: null, garantia: null };
-
-  const r = { semTexto: false, vida: null, local: null, garantia: null };
-  const mv = texto.match(/Design\s+Lifetime\s*:\s*(\d+(?:[.,]\d+)?)/i)
-          || texto.match(/Design\s+Lifetime\s+Considered\s+t\s*lifetime\s+(\d+(?:[.,]\d+)?)/i);
-  if (mv) r.vida = String(parseFloat(mv[1].replace(',', '.')));
-  const ml = texto.match(/Defect\s+Location\s*:\s*(External|Internal)/i);
-  if (ml) { r.local = ml[1].toLowerCase(); r.garantia = r.local === 'internal' ? '1' : '5'; }
-  return r;
 }
 
 function updateDocPreview() {

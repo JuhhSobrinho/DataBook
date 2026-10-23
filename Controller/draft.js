@@ -173,6 +173,9 @@ async function restaurarRascunho(estado, opts = {}){
     if(zoneEl) zoneEl.classList.add('has-file');
   }
 
+  // Memorial de calculo: refaz a comparacao com os campos do certificado (sem alterar os campos)
+  if(typeof reanalisarMemorial==='function') reanalisarMemorial();
+
   // Logo cliente
   if(estado.logoCliente){
     STATE.logoCliente=b64ToBytes(estado.logoCliente).buffer;

@@ -40,6 +40,7 @@ Bibliotecas de terceiros (carregadas via CDN em `View/index-form-databook.html`)
 | [Controller/draft.js](Controller/draft.js) | Exportar/importar o preenchimento do formulário como `.json` (rascunho) |
 | [Controller/ppci.js](Controller/ppci.js) | Importar um book (PDF) já gerado e montar o complemento PPCI ([seção 15](#15-importar-book-complemento-ppci)) |
 | [Controller/pendencias.js](Controller/pendencias.js) | Aviso ao gerar o PDF com itens não preenchidos ([seção 17](#17-aviso-de-itens-pendentes-ao-gerar-o-pdf)) |
+| [Controller/memorial.js](Controller/memorial.js) | Leitura do memorial de cálculo (modelos antigo e novo) e comparação com os campos do certificado ([seção 18](#18-memorial-de-cálculo-leitura-e-comparação-com-o-certificado)) |
 | [Model/assets-*.json](Model/) | Cada arquivo é `{"<categoria>": {...}}` com PDFs/imagens em base64 puro (sem prefixo `data:`) |
 | [manifest.json](manifest.json) | Manifesto PWA (nome, ícones, cor de tema, `display: standalone`) |
 | [sw.js](sw.js) | Service Worker — estratégia de cache offline |
@@ -394,17 +395,31 @@ Ao clicar em **Gerar PDF Final** (ou em "Gerar PDF" dentro da pré-visualizaçã
 
 ---
 
-## 18. Vida útil e garantia do certificado (leitura do memorial)
+## 18. Memorial de cálculo: leitura e comparação com o certificado
 
-No certificado de conformidade, a **garantia** e a **vida útil** vêm dos campos "Garantia contratual (anos)" (`cgGarantia`) e "Vida util do reparo (anos)" (`cgVida`) da etapa 11 — o texto "...garantia contratual dentro do período de **N anos**..." e a linha "VIDA ÚTIL DO REPARO PROJETADO" usam esses campos (antes o "5 anos" do texto era fixo). `anosTxt()` ([main.js](Controller/main.js)) cuida do singular/plural ("1 ano", "5 anos").
+Tudo está em [Controller/memorial.js](Controller/memorial.js). Ao anexar o memorial de cálculo (etapa 6), o app lê a camada de texto do PDF (PDF.js) e:
 
-**Preenchimento automático ao anexar o memorial de cálculo (etapa 6):** `extrairDadosMemorial()` lê, via PDF.js, a camada de texto do memorial (relatório "Composite Design Assessment") e procura:
+1. **Preenche** os campos do certificado (continuam editáveis, nada fica travado);
+2. **Mostra embaixo de cada campo o valor do cálculo** — `✓ cálculo: 101 kPa (1,01 bar)` (verde) se o que está digitado confere, `⚠ cálculo: 101 kPa … — diferente do campo · usar` (laranja) se diverge. O link **usar** copia o valor do cálculo para o campo. É só informação: nunca bloqueia a digitação nem a geração do book.
 
-| Campo do memorial | Campo do certificado | Regra |
-|---|---|---|
-| `Design Lifetime: 20` (anos) | `cgVida` | valor lido (aceita vírgula decimal) |
-| `Defect Location: External` / `Internal` | `cgGarantia` | **externa → 5 anos; interna → 1 ano** |
+**Dois modelos de memorial** (`interpretarMemorial()` reconhece os dois; o campo `modelo` indica qual):
 
-O preenchimento roda no `change` do upload, no script do fim de `index-form-databook.html` (`lerMemorialParaCertificado`, que usa `sincronizar()` como o Lot No.). Os campos **não ficam travados**: o destaque verde de "preenchido automaticamente" some assim que o usuário edita o campo, e o valor digitado é o que vai para o certificado. Embaixo dos campos, a nota `#memorialNota` informa o que foi lido; se o memorial for uma imagem (sem texto) ou não tiver esses campos, a nota fica em vermelho pedindo preenchimento manual e os campos não são alterados. Ao carregar rascunho/book importado os valores vêm dos próprios dados salvos (não há releitura do memorial).
+| Dado | Campo do certificado | Modelo ANTIGO ("Composite Design Assessment") | Modelo NOVO (ISO 24817 2026) |
+|---|---|---|---|
+| Vida útil | `cgVida` | `Design Lifetime: 20` | `Repair design lifetime … 20 years` |
+| Local da corrosão → garantia | `cgGarantia` | `Defect Location: External/Internal` | `Cause of defect Internal/External corrosion` |
+| Pressão de projeto | `cgPProj` | `Internal Design Pressure: P 1,0 barg` (×100 → kPa) | `Maximum repair design pressure … 0.10 Nmm-2 101.0 kPa` |
+| Pressão de operação | `cgPOper` | `Operating Pressure: 1,0` (barg) | `System internal operating pressure … 0.10 Nmm-2` |
+| Temperatura de projeto | `cgTProj` | `Design Temperature: T d 70 °C` | `Maximum repair design temperature … 70 °C` |
+| Temperatura de operação | `cgTOper` | *(não lida: sem rótulo inequívoco)* | `System operating temperature … 40 °C` |
+| TAG / Lot No. | `cgTag` / `cgSerial` | só comparação: o texto do memorial contém a TAG / o nº do documento? | idem |
 
-**Limites:** a regra depende do rótulo exato do relatório (`Design Lifetime:` e `Defect Location:`); foi validada com um memorial real de corrosão **externa** e com memoriais sintéticos de corrosão interna — se algum relatório vier com outro rótulo, ajuste as expressões regulares em `extrairDadosMemorial()`. Só o campo "Defect Location" decide a garantia; a causa do defeito ("Defect Cause") não é considerada.
+**Regra da garantia:** corrosão **interna → 1 ano**, **externa → 5 anos** (o campo `cgGarantia` alimenta o texto "…garantia contratual dentro do período de N anos…" do certificado; `anosTxt()` em `main.js` cuida de "1 ano"/"5 anos").
+
+**Quando preenche:** vida útil e garantia sempre (vêm com valor padrão e o memorial prevalece ao anexar); pressões e temperaturas só se o campo estiver vazio **ou ainda "automático"** (borda verde) — um valor digitado à mão nunca é sobrescrito por um memorial novo; ao editar o campo o verde some (lista de campos no script do fim de `index-form-databook.html`). O formato gravado é o do certificado: `101 KPA` para pressão, só o número para temperatura.
+
+**Como compara:** pressão digitada pode vir com unidade (`kPa`, `bar`, `barg`, `MPa`, `N/mm²`, `kgf/cm²`, `psi`); sem unidade é ambígua e vale se bater como kPa **ou** como bar. Tolerância de 5% (mínimo 2 kPa) nas pressões, 0,5 °C nas temperaturas. A TAG é comparada ignorando espaços e tipo de aspas.
+
+**Estados da nota `#memorialNota`:** lista o que foi lido e o que não foi encontrado; em vermelho quando o memorial é uma imagem (sem texto), quando o modelo não é reconhecido ou quando não foi possível ler. Ao carregar rascunho, `reanalisarMemorial()` refaz só a comparação (sem alterar campos). Não é feita no modo "Importar Book" (os anexos do book original não são relidos).
+
+**Limites:** o modelo ANTIGO foi validado com um memorial real. O modelo NOVO foi construído a partir do "Guia técnico" (rótulos e valores das páginas do memorial) e validado com um texto sintético com essa mesma ordem de rótulos — se um memorial novo real vier com a ordem das células diferente na extração de texto, ajuste as expressões regulares em `interpretarMemorial()`. Só o campo do local da corrosão decide a garantia; a "causa" do defeito não é considerada. Pressão em barg é tratada como bar (1 barg = 100 kPa).

@@ -249,6 +249,12 @@ section.step {
 }
 .aviso-contrato { color: #d32f2f; font-size: 12px; font-weight: 600; margin-top: 4px }
 
+/* Valor do calculo (memorial) embaixo dos campos do certificado: so informacao, nunca bloqueia */
+.calc-hint { display: none; font-size: 11.5px; margin-top: 3px; color: var(--muted) }
+.calc-hint.ok { color: #2e7d32 }
+.calc-hint.diverge { color: #c25e00; font-weight: 600 }
+.calc-hint .calc-usar { color: var(--team-blue); font-weight: 600; cursor: pointer }
+
 /* Aviso de nova versao do app (Service Worker) */
 .aviso-atualizacao {
     position: fixed;

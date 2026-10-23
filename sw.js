@@ -12,6 +12,7 @@ const CORE_ASSETS = [
   BASE + 'Controller/draft.js',
   BASE + 'Controller/ppci.js',
   BASE + 'Controller/pendencias.js',
+  BASE + 'Controller/memorial.js',
   BASE + 'icons/icon-192.png',
   BASE + 'icons/icon-512.png',
   BASE + 'manifest.json',
