@@ -50,6 +50,7 @@ function coletarRascunho(opts = {}){
     revisoes: coletarRevisoes(),
     proc:   document.querySelector('input[name=proc]:checked')?.value||null,
     fichas: [...document.querySelectorAll('input[name=ficha]:checked')].map(el=>el.value),
+    furo:   !!($('cgFuro')||{}).checked,
     pdas:   [...document.querySelectorAll('input[name=pda]:checked')].map(el=>el.value),
     tecnicos,
     uploads,
@@ -147,6 +148,7 @@ async function restaurarRascunho(estado, opts = {}){
 
   // Fichas e PDAs
   document.querySelectorAll('input[name=ficha]').forEach(el=>{ el.checked=(estado.fichas||[]).includes(el.value); });
+  if('furo' in estado && $('cgFuro')) $('cgFuro').checked=!!estado.furo;
   document.querySelectorAll('input[name=pda]').forEach(el=>{ el.checked=(estado.pdas||[]).includes(el.value); });
 
   // Técnicos

@@ -413,6 +413,9 @@ Tudo está em [Controller/memorial.js](Controller/memorial.js). Ao anexar o memo
 | Temperatura de projeto | `cgTProj` | `Design Temperature: T d 70 °C` | `Maximum repair design temperature … 70 °C` |
 | Temperatura de operação | `cgTOper` | *(não lida: sem rótulo inequívoco)* | `System operating temperature … 40 °C` |
 | TAG / Lot No. | `cgTag` / `cgSerial` | só comparação: o texto do memorial contém a TAG / o nº do documento? | idem |
+| Furo na linha (defeito passante) | checkbox `cgFuro` (marcada = SIM) | `Perforation/Leak` no bloco de defeito | `Defect type Perforation/leak` (outro tipo, p.ex. `Wall loss` → sem furo) |
+
+**Furo na linha:** o certificado imprime `FURO NA LINHA (DEFEITO PASSANTE):  ( X ) SIM  (   ) NÃO` logo abaixo da linha do PFP, conforme a checkbox "Há furo na linha" (etapa 11; sem marcar = NÃO). Ao anexar o memorial, a checkbox é marcada/desmarcada sozinha e aparece a comparação `✓/⚠ cálculo: defeito passante (furo) — Perforation/leak` com o link "usar". Depois que o usuário clica na checkbox (`data-manual` em `#furoBloco`), um memorial novo não a sobrescreve. A escolha vai no rascunho/dados do book (`furo`).
 
 **Regra da garantia:** corrosão **interna → 1 ano**, **externa → 5 anos** (o campo `cgGarantia` alimenta o texto "…garantia contratual dentro do período de N anos…" do certificado; `anosTxt()` em `main.js` cuida de "1 ano"/"5 anos").
 

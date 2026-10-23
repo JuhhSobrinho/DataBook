@@ -1766,6 +1766,12 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, o
   const pfpTxt = 'FOI REALIZADO APLICAÇÃO DE PFP:   ' + simMark + ' SIM   ' + naoMark + ' NÃO        ESPESSURA: ' + espTxt + '        COMP.: ' + compTxt;
   page.drawText(pfpTxt, { x: (PAGE_W - fontReg.widthOfTextAtSize(pfpTxt, 8.5)) / 2, y, size: 8.5, font: fontReg, color: BLACK });
 
+  // Furo na linha (defeito passante): checkbox do formulario (marcada = SIM; desmarcada = NAO), preenchida a partir do memorial
+  const furo = ov.furo !== undefined ? ov.furo : ($('cgFuro') && $('cgFuro').checked ? 'SIM' : 'NAO');
+  const furoTxt = 'FURO NA LINHA (DEFEITO PASSANTE):   ' + (furo === 'SIM' ? '( X )' : '(   )') + ' SIM   ' + (furo === 'NAO' ? '( X )' : '(   )') + ' NÃO';
+  y -= 14;
+  page.drawText(furoTxt, { x: (PAGE_W - fontReg.widthOfTextAtSize(furoTxt, 8.5)) / 2, y, size: 8.5, font: fontReg, color: BLACK });
+
   // ---- PAGINA 2 ----
   const page2 = pdf.addPage([PAGE_W, PAGE_H]);
   const titleY2 = desenhaHeaderCert(page2, '2');

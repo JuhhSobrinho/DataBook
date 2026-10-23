@@ -30,7 +30,7 @@ async function extrairDadosMemorial(buffer) {
 // Recebe o texto do memorial (já normalizado) e devolve os dados. Campos não encontrados ficam null.
 //   pProjKpa / pOperKpa: pressões em kPa | tProj / tOper: °C | vida: anos | local: 'internal'|'external'
 function interpretarMemorial(texto) {
-  const r = { semTexto: false, modelo: null, texto, vida: null, local: null, garantia: null, pProjKpa: null, pOperKpa: null, tProj: null, tOper: null };
+  const r = { semTexto: false, modelo: null, texto, vida: null, local: null, garantia: null, pProjKpa: null, pOperKpa: null, tProj: null, tOper: null, furo: null, tipoDefeito: null };
   const achar = (...res) => { for (const re of res) { const m = texto.match(re); if (m) return m; } return null; };
   const NUM = '(\\d+(?:[.,]\\d+)?)', NEG = '(-?\\d+(?:[.,]\\d+)?)';
   let m;
@@ -74,6 +74,15 @@ function interpretarMemorial(texto) {
   // temperatura de operação (°C) — só no modelo NOVO tem rótulo inequívoco
   if ((m = texto.match(new RegExp('System\\s+operating\\s+temperature\\s+(?:T\\s*op\\s+)?' + NEG + '\\s*°?\\s*C', 'i')))) r.tOper = _n(m[1]);
 
+  // furo na linha (defeito passante): NOVO "Defect type Perforation/leak Minimum remaining wall..." | ANTIGO "Perforation/Leak Defect Location: ..."
+  if ((m = texto.match(/Defect\s+type\s+(?!considered)(.{3,40}?)\s+Minimum\s+remaining\s+wall/i))) {
+    r.tipoDefeito = m[1].trim();
+    r.furo = /perforation|leak/i.test(m[1]) ? 'SIM' : 'NAO';
+  } else if (/Perforation\s*\/\s*Leak/i.test(texto)) {
+    r.tipoDefeito = 'Perforation/Leak';
+    r.furo = 'SIM';
+  }
+
   return r;
 }
 
@@ -101,6 +110,7 @@ const MEM_CAMPOS = [
   { id: 'cgGarantia', tipo: 'anos',    get: d => d.garantia, nome: 'garantia' },
   { id: 'cgTag',      tipo: 'tag',     nome: 'TAG' },
   { id: 'cgSerial',   tipo: 'lot',     nome: 'Lot No.' },
+  { id: 'furoBloco',  tipo: 'furo',    nome: 'furo na linha' },   // checkbox cgFuro (marcada = SIM)
 ];
 
 const _normTexto = s => String(s || '').toUpperCase().replace(/[″”“’'`´]/g, '"').replace(/\s+/g, '');
@@ -122,7 +132,7 @@ function _preencherCampo(id, valor) {
 
 function _hintDoCampo(id) {
   const el = document.getElementById(id);
-  const campo = el && el.closest('.field');
+  const campo = el && (el.closest('.field') || el);
   if (!campo) return null;
   let h = campo.querySelector('.calc-hint');
   if (!h) { h = document.createElement('small'); h.className = 'calc-hint'; campo.appendChild(h); }
@@ -137,6 +147,30 @@ function _valorLegivel(c, d) {
   return anosTxt(v) + (c.id === 'cgGarantia' ? ' (corrosão ' + (d.local === 'internal' ? 'interna' : 'externa') + ')' : '');
 }
 
+// Furo na linha: checkbox (marcada = SIM) x tipo de defeito do memorial (Perforation/leak = passante)
+function _comparaFuro(h, d) {
+  if (!d.furo) { h.classList.add('neutro'); h.textContent = 'cálculo: não encontrado no memorial'; return; }
+  const marcado = !!(document.getElementById('cgFuro') || {}).checked;
+  const status = (marcado ? 'SIM' : 'NAO') === d.furo ? 'ok' : 'diverge';
+  const txt = 'cálculo: ' + (d.furo === 'SIM' ? 'defeito passante (furo)' : 'sem furo') + ' — ' + d.tipoDefeito;
+  h.classList.add(status);
+  h.appendChild(document.createTextNode((status === 'ok' ? '✓ ' : '⚠ ') + txt + (status === 'diverge' ? ' — diferente do campo' : '')));
+  if (status === 'diverge') {
+    const a = document.createElement('a');
+    a.href = '#'; a.className = 'calc-usar'; a.textContent = 'usar';
+    a.onclick = e => { e.preventDefault(); _preencherFuro(d.furo); };
+    h.append(' · ', a);
+  }
+}
+
+// marca/desmarca a checkbox conforme o memorial. data-manual = o usuario ja mexeu: um memorial novo nao sobrescreve
+function _preencherFuro(valor) {
+  const cb = document.getElementById('cgFuro');
+  if (!cb) return;
+  cb.checked = valor === 'SIM';
+  cb.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 // Reescreve o texto de comparação embaixo de cada campo, de acordo com o memorial atual e o que está digitado
 function atualizarComparacaoMemorial() {
   const d = STATE.memorial;
@@ -149,6 +183,7 @@ function atualizarComparacaoMemorial() {
     h.textContent = '';
     if (!d || d.semTexto) { h.style.display = 'none'; continue; }
     h.style.display = 'block';
+    if (c.tipo === 'furo') { _comparaFuro(h, d); continue; }
 
     let texto = '', status = null, usar = null;
     if (c.tipo === 'tag' || c.tipo === 'lot') {
@@ -203,7 +238,7 @@ async function lerMemorialParaCertificado(fonte, { preencher = true } = {}) {
     }
     const lidos = [], faltou = [];
     for (const c of MEM_CAMPOS) {
-      if (c.tipo === 'tag' || c.tipo === 'lot') continue;
+      if (c.tipo === 'tag' || c.tipo === 'lot' || c.tipo === 'furo') continue;
       const valor = _valorParaCampo(c, d);
       if (valor == null) { faltou.push(c.nome); continue; }
       lidos.push(c.nome + ' ' + _valorLegivel(c, d));
@@ -212,6 +247,11 @@ async function lerMemorialParaCertificado(fonte, { preencher = true } = {}) {
       const sempre = c.tipo === 'anos'; // vida útil e garantia vêm com valor padrão: o memorial prevalece ao anexar
       if (sempre || !el.value.trim() || el.classList.contains('campo-sincronizado')) _preencherCampo(c.id, valor);
     }
+    if (d.furo) {
+      lidos.push('furo na linha ' + (d.furo === 'SIM' ? 'SIM' : 'NÃO') + ' (' + d.tipoDefeito + ')');
+      const cont = document.getElementById('furoBloco');
+      if (preencher && !(cont && cont.dataset.manual)) _preencherFuro(d.furo);
+    } else faltou.push('furo na linha');
     if (!lidos.length) mostrar('Não encontrei os dados do cálculo no memorial (modelo não reconhecido): preencha manualmente.', true);
     else mostrar((preencher ? 'Lido do memorial' : 'Memorial') + (d.modelo ? ' (modelo ' + d.modelo + ')' : '') + ': ' + lidos.join(' · ') + '. Os campos continuam editáveis; embaixo de cada um aparece o valor do cálculo.'
       + (faltou.length ? ' Não encontrei: ' + faltou.join(', ') + '.' : ''));
@@ -231,6 +271,9 @@ function reanalisarMemorial() {
 (function () {
   const memFile = document.getElementById('memFile');
   if (memFile) memFile.addEventListener('change', () => { const f = memFile.files[0]; if (f) lerMemorialParaCertificado(f); });
+  // escolha manual do furo (evento confiavel do usuario): memorial novo nao sobrescreve
+  const furoBloco = document.getElementById('furoBloco');
+  if (furoBloco) furoBloco.addEventListener('change', e => { if (e.isTrusted) furoBloco.dataset.manual = '1'; });
   // recompara enquanto o usuário edita os campos (TAG do certificado é espelhada da contracapa: espera a sincronização)
   const atualizar = () => setTimeout(atualizarComparacaoMemorial, 0);
   [...MEM_CAMPOS.map(c => c.id), 'tagEquip'].forEach(id => {
