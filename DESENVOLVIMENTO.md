@@ -391,3 +391,20 @@ Ao clicar em **Gerar PDF Final** (ou em "Gerar PDF" dentro da pré-visualizaçã
 - **Modo PPCI (importar book):** a lista é outra (RDE do PPCI, data do RDE com PPCI, PFP, descrição, data da capa, cliente e data do certificado). O RDE do PPCI e a data do RDE com PPCI são **bloqueantes** (`bloqueia`): o modal mostra "Faltam itens obrigatórios" e só oferece "Voltar e preencher", já que sem eles `montarBookPpci()` não consegue montar o book.
 - **Preview:** `gerarPDFDoPreview()` pergunta *antes* de fechar o preview (se o usuário cancelar, continua nele) e depois chama `gerarPDF(true)` para não perguntar duas vezes.
 - A pré-visualização (botão "Pre-visualizar") não pergunta nada: só a geração final.
+
+---
+
+## 18. Vida útil e garantia do certificado (leitura do memorial)
+
+No certificado de conformidade, a **garantia** e a **vida útil** vêm dos campos "Garantia contratual (anos)" (`cgGarantia`) e "Vida util do reparo (anos)" (`cgVida`) da etapa 11 — o texto "...garantia contratual dentro do período de **N anos**..." e a linha "VIDA ÚTIL DO REPARO PROJETADO" usam esses campos (antes o "5 anos" do texto era fixo). `anosTxt()` ([main.js](Controller/main.js)) cuida do singular/plural ("1 ano", "5 anos").
+
+**Preenchimento automático ao anexar o memorial de cálculo (etapa 6):** `extrairDadosMemorial()` lê, via PDF.js, a camada de texto do memorial (relatório "Composite Design Assessment") e procura:
+
+| Campo do memorial | Campo do certificado | Regra |
+|---|---|---|
+| `Design Lifetime: 20` (anos) | `cgVida` | valor lido (aceita vírgula decimal) |
+| `Defect Location: External` / `Internal` | `cgGarantia` | **externa → 5 anos; interna → 1 ano** |
+
+O preenchimento roda no `change` do upload, no script do fim de `index-form-databook.html` (`lerMemorialParaCertificado`, que usa `sincronizar()` como o Lot No.). Os campos **não ficam travados**: o destaque verde de "preenchido automaticamente" some assim que o usuário edita o campo, e o valor digitado é o que vai para o certificado. Embaixo dos campos, a nota `#memorialNota` informa o que foi lido; se o memorial for uma imagem (sem texto) ou não tiver esses campos, a nota fica em vermelho pedindo preenchimento manual e os campos não são alterados. Ao carregar rascunho/book importado os valores vêm dos próprios dados salvos (não há releitura do memorial).
+
+**Limites:** a regra depende do rótulo exato do relatório (`Design Lifetime:` e `Defect Location:`); foi validada com um memorial real de corrosão **externa** e com memoriais sintéticos de corrosão interna — se algum relatório vier com outro rótulo, ajuste as expressões regulares em `extrairDadosMemorial()`. Só o campo "Defect Location" decide a garantia; a causa do defeito ("Defect Cause") não é considerada.

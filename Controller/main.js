@@ -62,6 +62,39 @@ function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
 function cssEscape(s) { return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') }
 function normaliza(s) { return s.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim() }
 
+// "1" -> "1 ano", "5" -> "5 anos"; texto livre (ex.: "5 anos") fica como o usuario digitou
+function anosTxt(v) {
+  v = String(v == null ? '' : v).trim();
+  if (!v) return '';
+  if (!/^\d+([.,]\d+)?$/.test(v)) return v;
+  return v + (parseFloat(v.replace(',', '.')) === 1 ? ' ano' : ' anos');
+}
+
+// Le o memorial de calculo (PDF com camada de texto) e devolve:
+//   vida     -> "Design Lifetime" (anos)                     (vida util do reparo)
+//   local    -> "Defect Location": 'external' | 'internal'
+//   garantia -> '1' se a corrosao e interna, '5' se e externa
+// Campos que nao forem encontrados ficam null; sem texto (scan) devolve {semTexto:true}.
+async function extrairDadosMemorial(buffer) {
+  if (!window.pdfjsLib) return null;
+  const doc = await pdfjsLib.getDocument({ data: _toU8(buffer) }).promise;
+  let texto = '';
+  for (let i = 1; i <= Math.min(doc.numPages, 40); i++) {
+    const tc = await (await doc.getPage(i)).getTextContent();
+    texto += ' ' + tc.items.map(x => x.str).join(' ');
+  }
+  texto = texto.replace(/\s+/g, ' ');
+  if (texto.trim().length < 50) return { semTexto: true, vida: null, local: null, garantia: null };
+
+  const r = { semTexto: false, vida: null, local: null, garantia: null };
+  const mv = texto.match(/Design\s+Lifetime\s*:\s*(\d+(?:[.,]\d+)?)/i)
+          || texto.match(/Design\s+Lifetime\s+Considered\s+t\s*lifetime\s+(\d+(?:[.,]\d+)?)/i);
+  if (mv) r.vida = String(parseFloat(mv[1].replace(',', '.')));
+  const ml = texto.match(/Defect\s+Location\s*:\s*(External|Internal)/i);
+  if (ml) { r.local = ml[1].toLowerCase(); r.garantia = r.local === 'internal' ? '1' : '5'; }
+  return r;
+}
+
 function updateDocPreview() {
   const numero = getDocNumero();
   $('docPreview').textContent = numero;
@@ -1706,7 +1739,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, o
   y -= 8;
 
   const termsLabel = 'Termos/Especificações: ';
-  const termsBody = 'Serviço projetado e calculado em atendimento às normas regulamentadoras e às condições de projeto dos equipamentos, especificado pelo cliente. Atestamos para devidos fins que o serviço de instalação do projeto desenvolvido pela Team Industrial Services - Ltda, entre as condições de temperatura e pressão de operação e projeto informados, se apresenta eficaz e com garantia contratual dentro do período de 5 anos a partir da data de instalação. Para futuras revalidações e recertificações de reparos realizados é necessário que um técnico Team avalie o estado do reparo no local da execução (In loco) do mesmo.';
+  const termsBody = 'Serviço projetado e calculado em atendimento às normas regulamentadoras e às condições de projeto dos equipamentos, especificado pelo cliente. Atestamos para devidos fins que o serviço de instalação do projeto desenvolvido pela Team Industrial Services - Ltda, entre as condições de temperatura e pressão de operação e projeto informados, se apresenta eficaz e com garantia contratual dentro do período de ' + anosTxt(val('cgGarantia') || '5') + ' a partir da data de instalação. Para futuras revalidações e recertificações de reparos realizados é necessário que um técnico Team avalie o estado do reparo no local da execução (In loco) do mesmo.';
   const lbW9 = fontBold.widthOfTextAtSize(termsLabel, 9);
   page.drawText(termsLabel, { x: LX, y, size: 9, font: fontBold, color: BLACK });
   const firstMaxW = availW - lbW9;
@@ -1733,7 +1766,7 @@ async function desenhaCertificadoGarantia(pdf, fontReg, fontBold, logoTeamPng, o
     ['TEMPERATURA DE OPERAÇÃO:', ($('cgTOper').value ? $('cgTOper').value + ' C' : '')],
     ['NORMAS APLICÁVEIS:', val('cgNormas')],
     ['ENQUADRAMENTO NA CERTIFICADORA ABS:', (($('cgAbsText') || {}).value) || ''],
-    ['VIDA ÚTIL DO REPARO PROJETADO:', ($('cgVida').value ? $('cgVida').value + ' anos' : '')],
+    ['VIDA ÚTIL DO REPARO PROJETADO:', (val('cgVida') ? anosTxt(val('cgVida')) : '')],
   ];
   const maxSpecLW = Math.max(...specRows.map(([l]) => fontBold.widthOfTextAtSize(l, 8.5)));
   const valAreaW = 175;

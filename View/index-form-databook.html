@@ -396,6 +396,7 @@
         <div class="field"><label>Vida util do reparo (anos)</label><input type="text" id="cgVida" value="20"></div>
         <div class="field"><label>Garantia contratual (anos)</label><input type="text" id="cgGarantia" value="5"></div>
       </div>
+      <small id="memorialNota" class="hint" style="display:none;margin-top:4px"></small>
       <hr class="divider">
       <div class="field" style="margin-bottom:8px">
         <label>Enquadramento na Certificadora ABS</label>
@@ -649,7 +650,7 @@
   }
 
   // Remove visual de sincronizado quando o usuário edita manualmente
-  ['cgTeam','cgContrato','cgPlaqueta','cgPO','cgData','cgTag','cgDescricao','cgSerial'].forEach(id => {
+  ['cgTeam','cgContrato','cgPlaqueta','cgPO','cgData','cgTag','cgDescricao','cgSerial','cgVida','cgGarantia'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     ['input','change'].forEach(ev =>
@@ -717,7 +718,30 @@
     const semExt = file.name.replace(/\.[^.]+$/, '');
     const match  = semExt.match(/^(\d+)/);
     if (match) sincronizar('cgSerial', match[1]);
+    lerMemorialParaCertificado(file);
   });
+
+  // ── Memorial de cálculo → vida útil (Design Lifetime) e garantia (local da corrosão) ─────
+  // Preenche os campos, mas eles continuam editaveis: o usuario pode corrigir depois.
+  //   corrosao interna -> garantia 1 ano | externa -> 5 anos
+  async function lerMemorialParaCertificado(file) {
+    const nota = document.getElementById('memorialNota');
+    const mostrar = (txt, erro) => { if (!nota) return; nota.textContent = txt; nota.style.display = txt ? 'block' : 'none'; nota.style.color = erro ? '#d32f2f' : ''; };
+    try {
+      const r = await extrairDadosMemorial(await file.arrayBuffer());
+      if (!r) return;
+      if (r.semTexto) { mostrar('Memorial sem texto legível (imagem): preencha a vida útil e a garantia manualmente.', true); return; }
+      const partes = [];
+      if (r.vida)     { sincronizar('cgVida', r.vida);          partes.push('vida útil ' + anosTxt(r.vida) + ' (Design Lifetime)'); }
+      if (r.garantia) { sincronizar('cgGarantia', r.garantia);  partes.push('garantia ' + anosTxt(r.garantia) + ' (corrosão ' + (r.local === 'internal' ? 'interna' : 'externa') + ')'); }
+      const faltou = [!r.vida && 'Design Lifetime', !r.garantia && 'Defect Location'].filter(Boolean);
+      if (partes.length) mostrar('Lido do memorial: ' + partes.join(' · ') + '. Os campos continuam editáveis.' + (faltou.length ? ' Não encontrei ' + faltou.join(' nem ') + ': preencha manualmente.' : ''));
+      else mostrar('Não encontrei Design Lifetime nem Defect Location no memorial: preencha a vida útil e a garantia manualmente.', true);
+    } catch (e) {
+      console.warn('lerMemorialParaCertificado:', e);
+      mostrar('Não consegui ler o memorial: preencha a vida útil e a garantia manualmente.', true);
+    }
+  }
 
   // ── Fichas técnicas → atualiza descrição e indicador de PFP ao marcar/desmarcar Jotun ───────
   document.querySelectorAll('input[name="ficha"]').forEach(cb => {
