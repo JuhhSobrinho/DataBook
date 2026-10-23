@@ -190,16 +190,16 @@ const TEAM_GRAY = rgb(0.23, 0.27, 0.32);
 Diferente dos anexos em PDF, imagens (foto antes/depois, logo do cliente, assinatura) já são comprimidas **no momento do upload**, por `compressImageFile()` ([main.js:25](Controller/main.js#L25)):
 
 ```js
-async function compressImageFile(file, {maxDim=1600, mime='image/jpeg', quality=0.82} = {}){
+async function compressImageFile(file, {maxDim=1600, mime='image/jpeg', quality=0.82, alvoBytes=0, minQuality=0.6, minDim=900} = {}){
   // usa createImageBitmap + canvas para redimensionar e reexportar como JPEG/PNG
 }
 ```
 
-Downscale para `maxDim` (maior lado, em pixels) e reexporta na `quality` pedida. Configurações atuais ([main.js:115-117](Controller/main.js#L115)):
+Downscale para `maxDim` (maior lado, em pixels) e reexporta na `quality` pedida. Com `alvoBytes` (usado nas fotos do certificado, `FOTO_ALVO_BYTES` = 250KB), uma imagem que ainda fique mais pesada que o alvo é reduzida mais — primeiro a qualidade, até `minQuality`, depois as dimensões, até `minDim` —, enquanto fotos leves ficam como estão. Cada foto ocupa meia página do certificado (~3,5"), então 1400px já dá mais de 400 DPI e a redução não é perceptível. Configurações atuais ([main.js:115-117](Controller/main.js#L115)):
 
 | Campo | maxDim | mime | quality |
 |---|---|---|---|
-| Foto antes/depois | 1600px | JPEG | 0.82 |
+| Foto antes/depois | 1400px, **reduz mais se passar de 250KB** (`FOTO_OPTS`) | JPEG | 0.85 (cai até 0.6; depois as dimensões, até 900px) |
 | Logo do cliente | 900px | PNG/JPEG (conforme original) | 0.85 |
 | Assinatura | 900px | PNG (mantém transparência) | — |
 
@@ -225,39 +225,39 @@ function _fitRectoA4(srcW, srcH){
 }
 ```
 
-Cada página assim criada é marcada com uma entrada customizada no próprio dicionário da página do PDF (`newPage.node.set(PDFName.of(ANEXO_MARK), PDFBool.True)`) — é assim que o passo de compressão (a seguir) sabe, mais tarde, quais páginas pode rasterizar e quais são conteúdo gerado pelo app (capa, separadores, índice, certificado) e devem continuar vetoriais. Essa marca é uma entrada de baixo nível do PDF, então **sobrevive** a `copyPages`, `save` e `load` — validado manualmente: uma página marcada continua marcada depois de passar pelo ciclo completo save→load→copyPages→save→load que o app usa em vários lugares (drawer de miniaturas, remoção de páginas no preview, editor de correções).
+Cada página assim criada é marcada com uma entrada customizada no próprio dicionário da página do PDF (`newPage.node.set(PDFName.of(ANEXO_MARK), PDFBool.True)`) — é assim que o passo de compressão (a seguir) sabe, mais tarde, quais páginas são anexos (candidatos a recompressão, se pesados) e quais são conteúdo gerado pelo app (capa, separadores, índice, certificado), que nunca é tocado. Essa marca é uma entrada de baixo nível do PDF, então **sobrevive** a `copyPages`, `save` e `load` — validado manualmente: uma página marcada continua marcada depois de passar pelo ciclo completo save→load→copyPages→save→load que o app usa em vários lugares (drawer de miniaturas, remoção de páginas no preview, editor de correções).
 
 Como essa função não depende mais do PDF.js, a pré-visualização e o editor de sobreposição ficam **rápidos e sempre nítidos** — nada é rasterizado até o usuário decidir baixar o arquivo.
 
 ### 8.2 Compressão — só na hora de baixar (`comprimirDatabookFinal`)
 
-`gerarPDF()` ([main.js:274](Controller/main.js#L274)) monta o databook (ou reusa `_correctedBytes`, se o usuário editou/rotacionou no preview), aplica remoções de página (drawer + preview) e só então, como último passo antes de criar o link de download, chama:
+`gerarPDF()` monta o databook (ou reusa `_correctedBytes`, se o usuário editou/rotacionou no preview), aplica remoções de página (drawer + preview) e só então, como último passo antes de criar o link de download, chama:
 
 ```js
 bytes = await comprimirDatabookFinal(bytes);
 ```
 
-`comprimirDatabookFinal()` ([main.js:1130](Controller/main.js#L1130)) recebe o PDF já pronto (com todas as edições do usuário já aplicadas) e:
+**Princípio: só se mexe no que é pesado, e só se compensar.** Medindo os assets reais do projeto (páginas × peso das imagens), os certificados de técnicos já são leves (~180KB/página; rasterizá-los a 140 DPI / 0,70 os deixaria **maiores**: 13,5MB contra 8,8MB), e procedimentos, PDA, fichas e ID cards têm no máximo ~85KB de imagem por página (a ficha da Resimac, um scan, tem ~490KB). Rasterizar tudo, como a versão anterior fazia, "economizava" degradando páginas que já eram leves. Por isso `comprimirDatabookFinal()` ([main.js](Controller/main.js)):
 
-1. Carrega o PDF com pdf-lib e lê, página a página, se ela tem a marca `ANEXO_MARK`.
-2. Para as páginas **sem** a marca (geradas pelo app), embute de volta como vetor — sem custo de qualidade.
-3. Para as páginas **com** a marca, renderiza no `<canvas>` via PDF.js numa resolução fixa (`COMPRESS_DPI`) e reexporta como JPEG numa qualidade fixa (`COMPRESS_QUALITY`), desenhando o resultado ajustado por `_fitRectoA4` na página A4.
+1. Carrega o PDF com pdf-lib e, para cada página com a marca `ANEXO_MARK`, mede o peso das imagens que ela usa (`_bytesImagensDaPagina()`: soma dos XObjects `/Image`, inclusive dentro de Forms).
+2. Só são **candidatas** as páginas anexadas com mais de `ANEXO_PESADO_BYTES` (~200KB) de imagem — em geral scans e fotos de uploads (SS, RDO, RDE, memorial, avaliação de risco) e a ficha da Resimac.
+3. Todas as outras páginas — capa, contracapa, índice, separadores, certificado de garantia e os anexos "leves" — são **copiadas como estão** (`copyPages`, numa única chamada para preservar o compartilhamento de fontes/logo). Continuam sendo páginas nativas, com texto real que o Acrobat reconhece, e os anexos leves mantêm nitidez total e texto selecionável.
+4. Cada candidata é renderizada no `<canvas>` via PDF.js (`COMPRESS_DPI`) e reexportada como JPEG (`COMPRESS_QUALITY`), desenhada ajustada por `_fitRectoA4` numa página A4. **Se o JPEG não ficar pelo menos 15% menor que as imagens originais da página, a página original é mantida** — a compressão nunca aumenta o arquivo nem degrada à toa.
 
 ```js
-const COMPRESS_DPI     = 100;  // resolucao efetiva das paginas anexadas no PDF final
-const COMPRESS_QUALITY = 0.45; // qualidade do JPEG re-codificado (0 a 1)
-const MAX_RENDER_PX    = 1800; // teto de pixels no maior lado do canvas de renderizacao
+const COMPRESS_DPI       = 140;        // resolucao das paginas pesadas recomprimidas
+const COMPRESS_QUALITY   = 0.70;       // qualidade do JPEG re-codificado (0 a 1)
+const ANEXO_PESADO_BYTES = 200 * 1024; // so paginas anexadas com mais de ~200KB de imagem sao recomprimidas
+const MAX_RENDER_PX      = 1800;       // teto de pixels no maior lado do canvas de renderizacao
 ```
 
-Esses números são o único lugar a mexer para trocar o equilíbrio nitidez↔tamanho. Reduzir o DPI tem impacto **quadrático** no tamanho (metade do DPI ≈ 1/4 dos pixels); a qualidade JPEG tem impacto mais suave e não-linear. `MAX_RENDER_PX` é um teto de segurança independente do DPI configurado — protege contra páginas de origem com Caixa de Mídia fora do padrão (a mesma causa do bug da página gigante) gerando canvases enormes e mais pesados do que precisam.
+Esses números são o lugar a mexer para trocar o equilíbrio nitidez↔tamanho. Reduzir o DPI tem impacto **quadrático** no tamanho (metade do DPI ≈ 1/4 dos pixels); a qualidade JPEG tem impacto mais suave e não-linear. Referência medida com um scan A4 de 300 DPI (2,2MB): a 140 DPI / 0,70 ficou em ~210KB. A 100 DPI / 0,45 (valores usados antes) o texto ficava visivelmente borrado. `MAX_RENDER_PX` é um teto de segurança independente do DPI — protege contra páginas de origem com Caixa de Mídia fora do padrão gerando canvases enormes.
 
-**Importante para não desperdiçar a compressão:** só é embutido (`embedPdf`) o conteúdo vetorial das páginas que **não** serão rasterizadas — as páginas marcadas são deixadas de fora desse embed inicial, senão o PDF final carregaria o conteúdo pesado original de qualquer forma, mesmo sem desenhá-lo.
+**Fallback de segurança:** cada candidata tem um timeout de 20s de renderização; se estourar (ou qualquer outro erro, ou "sem ganho"), aquela página específica é copiada como está, sem derrubar a geração do resto do documento. A marca `ANEXO_MARK` é removida de todas as páginas do arquivo final (já passaram pela compressão); a marca de seção (`SECAO_MARK`) é preservada porque `copyPages` a leva junto.
 
-**Fallback de segurança:** cada página marcada tem um timeout de 20s de renderização; se estourar (ou qualquer outro erro), aquela página específica cai para o embed vetorial original (sem compressão), sem derrubar a geração do resto do documento — a lógica é idêntica à do antigo `anexarPdfComprimido`, só que rodando uma vez no final em vez de uma vez por anexo durante a montagem.
+**Trade-off consciente:** páginas rasterizadas deixam de ter texto pesquisável — mas só são rasterizadas as pesadas, que na prática são scans e fotos, sem camada de texto de qualquer forma.
 
-**Trade-off consciente:** a rasterização transforma texto pesquisável em imagem. Como a maioria dos anexos já são digitalizações (fotos/scans de RDO, RDE, certificados), isso normalmente não perde nada relevante — mas fichas técnicas com texto vetorial nativo (ex.: PDF gerado direto de um sistema, como a ficha da Vectorply) também passam por isso e perdem a seleção de texto, ficando só como imagem de alta resolução. Não existe hoje uma forma de marcar um anexo específico como "manter pesquisável, não comprimir" — o tratamento é uniforme para todo anexo.
-
-**Nota de ambiente:** `_toU8()` ([main.js:331](Controller/main.js#L331)) sempre faz uma cópia independente (`.slice(0)`) dos bytes antes de passar para o PDF.js — necessário porque `pdfjsLib.getDocument()` **transfere/detacha** o `ArrayBuffer` original para o worker. Sem essa cópia, comprimir (ou gerar o PDF) uma segunda vez com os mesmos bytes falharia silenciosamente.
+**Nota de ambiente:** `_toU8()` sempre faz uma cópia independente (`.slice(0)`) dos bytes antes de passar para o PDF.js — necessário porque `pdfjsLib.getDocument()` **transfere/detacha** o `ArrayBuffer` original para o worker. Sem essa cópia, comprimir (ou gerar o PDF) uma segunda vez com os mesmos bytes falharia silenciosamente. Ao testar no console, lembre que `pdfjsLib.getDocument` é somente leitura (atribuir a ele é ignorado em silêncio) e que a renderização do PDF.js só roda de forma confiável com a aba visível.
 
 ---
 
@@ -331,7 +331,7 @@ const MODEL_ASSETS = [ /* Model/assets-*.json */ ];              // baixados em 
 | Adicionar ficha técnica / procedimento / PDA | `Model/assets-*.json` + checkbox em `View/index-form-databook.html` ([seção 5](#5-sistema-de-assets-modeljson)) |
 | Adicionar técnico ou certificado | `Model/assets-tecnicos.json` (+ `assets-idcards.json` se tiver crachá Jotun) |
 | Mudar layout da capa/contracapa/separador/certificado | `desenhaCapa`, `desenhaContracapa`, `desenhaSeparador`, `desenhaCertificadoGarantia` em `main.js` |
-| Ajustar tamanho final do PDF (compressão) | `COMPRESS_DPI` / `COMPRESS_QUALITY` em `main.js` ([seção 8](#8-compressão-dos-anexos-em-pdf-anexarpdf)) |
+| Ajustar tamanho final do PDF (compressão) | `COMPRESS_DPI` / `COMPRESS_QUALITY` / `ANEXO_PESADO_BYTES` em `main.js` ([seção 8](#8-compressão-dos-anexos-em-pdf-anexarpdf)) |
 | Ajustar compressão de fotos/logo/assinatura | Parâmetros passados para `compressImageFile()` em `setupFoto(...)` / no listener de `logoCliente` ([seção 7](#7-upload-e-compressão-de-imagens-fotos-logo-assinatura)) |
 | Mudar a senha de acesso | `SENHA_HASH` em `index.html` |
 | Mudar tema/cores da interface | `View/styles/style-global.css` |

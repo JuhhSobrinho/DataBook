@@ -22,18 +22,30 @@ async function fileToBuffer(file) {
     fr.readAsArrayBuffer(file);
   });
 }
-async function compressImageFile(file, { maxDim = 1600, mime = 'image/jpeg', quality = 0.82 } = {}) {
+// alvoBytes (so JPEG): se a imagem ficar mais pesada que isso, reduz mais — primeiro a qualidade,
+// ate minQuality, depois as dimensoes, ate minDim. Imagens leves nao sao tocadas alem do padrao.
+async function compressImageFile(file, { maxDim = 1600, mime = 'image/jpeg', quality = 0.82, alvoBytes = 0, minQuality = 0.6, minDim = 900 } = {}) {
   try {
     const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-    const w = Math.max(1, Math.round(bitmap.width * scale));
-    const h = Math.max(1, Math.round(bitmap.height * scale));
-    const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+    const codificar = async (dim, q) => {
+      const scale = Math.min(1, dim / Math.max(bitmap.width, bitmap.height));
+      const w = Math.max(1, Math.round(bitmap.width * scale));
+      const h = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+      const b = await new Promise(res => canvas.toBlob(res, mime, q));
+      if (!b) throw new Error('toBlob falhou');
+      return b;
+    };
+    let dim = maxDim, q = quality;
+    let blob = await codificar(dim, q);
+    while (alvoBytes && mime === 'image/jpeg' && blob.size > alvoBytes && (q > minQuality || dim > minDim)) {
+      if (q > minQuality) q = Math.max(minQuality, q - 0.08);
+      else dim = Math.max(minDim, Math.round(dim * 0.85));
+      blob = await codificar(dim, q);
+    }
     if (bitmap.close) bitmap.close();
-    const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
-    if (!blob) throw new Error('toBlob falhou');
     return { buffer: await blob.arrayBuffer(), type: mime };
   } catch (e) {
     console.warn('compressImageFile: usando arquivo original sem compactar', e);
@@ -171,8 +183,12 @@ function setupFoto(inputId, zoneId, nameId, stateKey, compressOpts) {
     }
   });
 }
-setupFoto('fotoAntesFile', 'fotoAntesZone', 'fotoAntesName', 'fotoAntes', { maxDim: 1600, mime: 'image/jpeg', quality: 0.82 });
-setupFoto('fotoDepoisFile', 'fotoDepoisZone', 'fotoDepoisName', 'fotoDepois', { maxDim: 1600, mime: 'image/jpeg', quality: 0.82 });
+// Fotos do certificado: cada uma ocupa meia pagina (~3,5"), entao 1400px ja da >400 DPI. Se a foto ainda
+// passar de FOTO_ALVO_BYTES, e' reduzida mais (qualidade ate 0.6, depois dimensoes ate 900px).
+const FOTO_ALVO_BYTES = 250 * 1024;
+const FOTO_OPTS = { maxDim: 1400, mime: 'image/jpeg', quality: 0.85, alvoBytes: FOTO_ALVO_BYTES, minQuality: 0.6, minDim: 900 };
+setupFoto('fotoAntesFile', 'fotoAntesZone', 'fotoAntesName', 'fotoAntes', FOTO_OPTS);
+setupFoto('fotoDepoisFile', 'fotoDepoisZone', 'fotoDepoisName', 'fotoDepois', FOTO_OPTS);
 setupFoto('assinaturaFile', 'assinaturaZone', 'assinaturaName', 'assinatura', { maxDim: 900, mime: 'image/png' });
 
 function coletarRevisoes() {
@@ -1178,8 +1194,9 @@ function desenhaEncerramento(pdf, fontReg, fontBold, logoTeamPng, docNum, elab) 
 
 }
 
-const COMPRESS_DPI = 100;  // resolucao efetiva das paginas anexadas, aplicada so na hora de gerar o PDF final
-const COMPRESS_QUALITY = 0.45; // qualidade do JPEG re-codificado (0 a 1)
+const COMPRESS_DPI = 140;  // resolucao efetiva das paginas pesadas recomprimidas, aplicada so na hora de gerar o PDF final
+const COMPRESS_QUALITY = 0.70; // qualidade do JPEG re-codificado (0 a 1)
+const ANEXO_PESADO_BYTES = 200 * 1024; // so paginas anexadas com mais de ~200KB de imagem sao recomprimidas
 const MAX_RENDER_PX = 1800; // teto de pixels no maior lado do canvas de renderizacao
 const ANEXO_MARK = 'TeamAnexo'; // chave custom gravada no dict da pagina p/ identifica-la como anexo
 const SECAO_MARK = 'TeamSecao'; // idem, nos separadores: guarda o n da secao (usado pela importacao do book)
@@ -1192,6 +1209,35 @@ function _fitRectoA4(srcW, srcH) {
   const scale = Math.min(PAGE_W / srcW, PAGE_H / srcH);
   const width = srcW * scale, height = srcH * scale;
   return { x: (PAGE_W - width) / 2, y: (PAGE_H - height) / 2, width, height };
+}
+
+// Soma, em bytes, o peso das imagens (XObjects /Image, inclusive dentro de Forms) usadas por uma
+// pagina de um PDF carregado no pdf-lib. E' o que distingue um scan/foto pesado (centenas de KB
+// por pagina) de um documento "de texto" (so logos pequenas) — ver ANEXO_PESADO_BYTES.
+function _bytesImagensDaPagina(page) {
+  const { PDFDict, PDFStream } = PDFLib;
+  const vistos = new Set();
+  const somar = (res, prof) => {
+    if (!res || prof > 3) return 0;
+    const xo = res.lookupMaybe(PDFName.of('XObject'), PDFDict);
+    if (!xo) return 0;
+    let total = 0;
+    for (const [, valor] of xo.entries()) {
+      const obj = xo.context.lookup(valor);
+      if (!(obj instanceof PDFStream) || vistos.has(obj)) continue;
+      vistos.add(obj);
+      const sub = obj.dict.get(PDFName.of('Subtype'));
+      if (sub === PDFName.of('Image')) total += obj.getContentsSize();
+      else if (sub === PDFName.of('Form')) total += somar(obj.dict.lookupMaybe(PDFName.of('Resources'), PDFDict), prof + 1);
+    }
+    return total;
+  };
+  let node = page.node, res;
+  while (node && !res) {
+    res = node.lookupMaybe(PDFName.of('Resources'), PDFDict);
+    node = node.lookupMaybe(PDFName.of('Parent'), PDFDict);
+  }
+  return somar(res, 0);
 }
 
 // Anexa um PDF (upload ou asset) sempre em qualidade vetorial total — usado tanto na
@@ -1216,8 +1262,14 @@ async function anexarPdf(targetPdf, source) {
 
 // Comprime o databook já montado (com remoções/edições já aplicadas), rodando só no
 // momento de gerar o PDF final para download — a pré-visualização e o editor continuam
-// trabalhando com as páginas em qualidade total. Só as páginas marcadas por anexarPdf são
-// rasterizadas/recomprimidas; capa, separadores, índice etc. permanecem vetoriais.
+// trabalhando com as páginas em qualidade total.
+//
+// Só são recomprimidas as páginas anexadas (ANEXO_MARK) que sejam PESADAS (mais de
+// ANEXO_PESADO_BYTES de imagem na página — scans e fotos). Todas as demais páginas são copiadas
+// tal como estão (copyPages): capa, separadores, índice e certificado seguem como páginas nativas,
+// com texto real selecionável no Acrobat, e anexos "leves" (procedimentos, fichas, PDA, ID cards,
+// certificados de técnicos pequenos) mantêm nitidez total e texto. Uma página pesada também é
+// mantida como está se a recompressão não reduzir o tamanho de forma relevante.
 async function comprimirDatabookFinal(bytes) {
   if (!window.pdfjsLib) return _toU8(bytes);
 
@@ -1226,8 +1278,9 @@ async function comprimirDatabookFinal(bytes) {
   catch (e) { console.warn('comprimirDatabookFinal: falha ao carregar PDF, mantendo sem compressao:', e); return _toU8(bytes); }
 
   const srcPages = srcDoc.getPages();
-  const anexoFlags = srcPages.map(p => !!p.node.get(PDFName.of(ANEXO_MARK)));
-  if (!anexoFlags.some(Boolean)) return _toU8(bytes); // nada marcado — nada a comprimir
+  const pesoImg = srcPages.map(p => p.node.lookup(PDFName.of(ANEXO_MARK)) ? _bytesImagensDaPagina(p) : 0);
+  const candidata = pesoImg.map(b => b > ANEXO_PESADO_BYTES);
+  if (!candidata.some(Boolean)) return _toU8(bytes); // nada pesado — nada a comprimir
 
   let pdfJsDoc;
   try { pdfJsDoc = await pdfjsLib.getDocument({ data: _toU8(bytes) }).promise; }
@@ -1235,24 +1288,20 @@ async function comprimirDatabookFinal(bytes) {
 
   const out = await PDFDocument.create();
 
-  // So embute (vetorial) as paginas que NAO vao ser rasterizadas — evita carregar no
-  // arquivo final o conteudo pesado original das paginas que serao recomprimidas.
-  const idxVetor = anexoFlags.map((f, i) => f ? -1 : i).filter(i => i >= 0);
-  const embVetor = idxVetor.length ? await out.embedPdf(_toU8(bytes), idxVetor) : [];
-  const embPorIndice = new Map(idxVetor.map((origIdx, pos) => [origIdx, embVetor[pos]]));
+  // Uma unica chamada de copyPages para todas as paginas que ficam como estao (preserva o
+  // compartilhamento de fontes/logo entre elas). As candidatas ficam de fora: assim o conteudo
+  // pesado original so entra no arquivo se a recompressao falhar.
+  const idxNativos = candidata.map((c, i) => c ? -1 : i).filter(i => i >= 0);
+  const nativas = await out.copyPages(srcDoc, idxNativos);
+  const nativaPorIndice = new Map(idxNativos.map((origIdx, pos) => [origIdx, nativas[pos]]));
+
+  const adicionarNativa = pagina => {
+    pagina.node.delete(PDFName.of(ANEXO_MARK)); // ja passou pela compressao: nao reprocessar numa reimportacao
+    out.addPage(pagina);
+  };
 
   for (let i = 0; i < srcPages.length; i++) {
-    const newPage = out.addPage([PAGE_W, PAGE_H]);
-
-    // preserva a marca de secao dos separadores (a importacao do book depende dela)
-    const secao = srcPages[i].node.lookup(PDFName.of(SECAO_MARK));
-    if (secao) newPage.node.set(PDFName.of(SECAO_MARK), PDFNumber.of(secao.asNumber()));
-
-    if (!anexoFlags[i]) {
-      const emb = embPorIndice.get(i);
-      newPage.drawPage(emb, _fitRectoA4(emb.width, emb.height));
-      continue;
-    }
+    if (!candidata[i]) { adicionarNativa(nativaPorIndice.get(i)); continue; }
 
     try {
       const page = await pdfJsDoc.getPage(i + 1);
@@ -1277,15 +1326,16 @@ async function comprimirDatabookFinal(bytes) {
         new Promise((_, rej) => setTimeout(() => { renderTask.cancel(); rej(new Error('render timeout')); }, 20000))
       ]);
 
-      const jpegB64 = canvas.toDataURL('image/jpeg', COMPRESS_QUALITY).split(',')[1];
-      const img = await out.embedJpg(b64ToBytes(jpegB64));
-      const widthPt = viewport.width / scale;
-      const heightPt = viewport.height / scale;
-      newPage.drawImage(img, _fitRectoA4(widthPt, heightPt));
+      const jpegBytes = b64ToBytes(canvas.toDataURL('image/jpeg', COMPRESS_QUALITY).split(',')[1]);
+      if (jpegBytes.length > pesoImg[i] * 0.85) throw new Error('sem ganho relevante (' + jpegBytes.length + ' B contra ' + pesoImg[i] + ' B originais)');
+
+      const img = await out.embedJpg(jpegBytes);
+      const newPage = out.addPage([PAGE_W, PAGE_H]);
+      newPage.drawImage(img, _fitRectoA4(viewport.width / scale, viewport.height / scale));
     } catch (e) {
-      console.warn('comprimirDatabookFinal: pagina ' + (i + 1) + ' sem compressao, usando original:', e);
-      const embFallback = (await out.embedPdf(_toU8(bytes), [i]))[0];
-      newPage.drawPage(embFallback, _fitRectoA4(embFallback.width, embFallback.height));
+      console.warn('comprimirDatabookFinal: pagina ' + (i + 1) + ' mantida sem recompressao:', e.message || e);
+      const [original] = await out.copyPages(srcDoc, [i]);
+      adicionarNativa(original);
     }
   }
 
