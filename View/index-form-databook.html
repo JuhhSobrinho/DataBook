@@ -163,6 +163,7 @@
       <input type="text" id="doc4" maxlength="3" placeholder="000" value="">
       <input type="text" id="doc5" maxlength="4" placeholder="2000" value="">
     </div>
+    <small id="docContratoAviso" class="aviso-contrato" style="display:none"></small>
     <p class="hint" style="margin-top:6px">Preview: <strong id="docPreview" style="color:var(--team-blue);font-family:monospace"></strong></p>
     <div class="grid grid-3" style="margin-top:14px">
       <div class="field"><label>Data</label><input type="date" id="capaData"></div>
@@ -607,6 +608,27 @@
 
   const POR_PLATAFORMA = {};
   PROJETOS.forEach(p => p.plataformas.forEach(plat => POR_PLATAFORMA[plat.toUpperCase()] = p));
+
+  // ── Aviso de contrato inexistente ────────────────────────────────────────
+  // Compara 8104-<doc1>-<doc2> com a lista PROJETOS (acima). E' so um aviso: nao impede digitar
+  // outro numero nem gerar o book. So avalia com os dois campos completos, para nao piscar
+  // em vermelho enquanto o usuario ainda esta digitando.
+  function validarContratoDoc() {
+    const d1 = document.getElementById('doc1'), d2 = document.getElementById('doc2');
+    const aviso = document.getElementById('docContratoAviso');
+    if (!d1 || !d2 || !aviso) return;
+    const v1 = d1.value.trim(), v2 = d2.value.trim();
+    const completo = v1.length === d1.maxLength && v2.length === d2.maxLength;
+    const team = `8104-${v1}-${v2}`;
+    const inexistente = completo && !PROJETOS.some(p => p.team === team);
+    [d1, d2].forEach(el => el.classList.toggle('contrato-invalido', inexistente));
+    aviso.style.display = inexistente ? 'block' : 'none';
+    aviso.textContent = inexistente ? `Contrato não existente (${team})` : '';
+    aviso.title = 'Contratos cadastrados: ' + PROJETOS.map(p => `${p.team} (${p.nome})`).join(', ');
+  }
+  window.validarContratoDoc = validarContratoDoc; // chamada tambem ao restaurar rascunho/book importado
+  ['doc1', 'doc2'].forEach(id => document.getElementById(id).addEventListener('input', validarContratoDoc));
+  validarContratoDoc();
 
   // Preenche só se o campo estiver vazio (lookup único: contrato, team)
   function preencher(campo, valor) {

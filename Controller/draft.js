@@ -121,6 +121,7 @@ async function restaurarRascunho(estado, opts = {}){
     const el=$(id); if(el) el.value=val;
   }
   updateDocPreview();
+  if(typeof validarContratoDoc==='function') validarContratoDoc();
   if(typeof updateCertifPreview==='function') updateCertifPreview();
 
   // Radios

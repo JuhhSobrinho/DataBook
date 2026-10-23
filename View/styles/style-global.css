@@ -241,6 +241,14 @@ section.step {
 #pendLista li.bloqueia { color: #d32f2f; font-weight: 600 }
 .pend-acoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px }
 
+/* Numero do documento que nao corresponde a nenhum contrato cadastrado (so aviso, nao bloqueia) */
+.doc-pattern input.contrato-invalido {
+    border-color: #d32f2f !important;
+    background: rgba(211, 47, 47, .08) !important;
+    color: #d32f2f
+}
+.aviso-contrato { color: #d32f2f; font-size: 12px; font-weight: 600; margin-top: 4px }
+
 /* Aviso de nova versao do app (Service Worker) */
 .aviso-atualizacao {
     position: fixed;

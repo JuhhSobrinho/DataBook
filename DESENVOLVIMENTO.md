@@ -330,6 +330,7 @@ const MODEL_ASSETS = [ /* Model/assets-*.json */ ];              // baixados em 
 |---|---|
 | Adicionar ficha técnica / procedimento / PDA | `Model/assets-*.json` + checkbox em `View/index-form-databook.html` ([seção 5](#5-sistema-de-assets-modeljson)) |
 | Adicionar técnico ou certificado | `Model/assets-tecnicos.json` (+ `assets-idcards.json` se tiver crachá Jotun) |
+| Cadastrar um contrato novo (nº do job `8104-AA-NNNN`, nº do contrato e plataformas) | Lista `PROJETOS` no script do fim de `View/index-form-databook.html`. É a **mesma lista** que preenche o contrato do certificado e que valida o número do documento: se `8104-<doc1>-<doc2>` (etapa 1) não estiver nela, os campos ficam em vermelho com "Contrato não existente (…)" — só aviso, não impede digitar nem gerar o book. A validação (`validarContratoDoc`) só roda com os dois campos completos e também ao restaurar rascunho/book importado |
 | Mudar layout da capa/contracapa/separador/certificado | `desenhaCapa`, `desenhaContracapa`, `desenhaSeparador`, `desenhaCertificadoGarantia` em `main.js` |
 | Ajustar tamanho final do PDF (compressão) | `COMPRESS_DPI` / `COMPRESS_QUALITY` / `ANEXO_PESADO_BYTES` em `main.js` ([seção 8](#8-compressão-dos-anexos-em-pdf-anexarpdf)) |
 | Ajustar compressão de fotos/logo/assinatura | Parâmetros passados para `compressImageFile()` em `setupFoto(...)` / no listener de `logoCliente` ([seção 7](#7-upload-e-compressão-de-imagens-fotos-logo-assinatura)) |
