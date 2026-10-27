@@ -30,7 +30,7 @@ async function extrairDadosMemorial(buffer) {
 // Recebe o texto do memorial (já normalizado) e devolve os dados. Campos não encontrados ficam null.
 //   pProjKpa / pOperKpa: pressões em kPa | tProj / tOper: °C | vida: anos | local: 'internal'|'external'
 function interpretarMemorial(texto) {
-  const r = { semTexto: false, modelo: null, texto, vida: null, local: null, garantia: null, pProjKpa: null, pOperKpa: null, tProj: null, tOper: null, furo: null, tipoDefeito: null };
+  const r = { semTexto: false, modelo: null, texto, vida: null, local: null, garantia: null, pProjKpa: null, pOperKpa: null, tProj: null, tOper: null, furo: null, tipoDefeito: null, cliente: null };
   const achar = (...res) => { for (const re of res) { const m = texto.match(re); if (m) return m; } return null; };
   const NUM = '(\\d+(?:[.,]\\d+)?)', NEG = '(-?\\d+(?:[.,]\\d+)?)';
   let m;
@@ -83,6 +83,12 @@ function interpretarMemorial(texto) {
     r.furo = 'SIM';
   }
 
+  // cliente + plataforma: ANTIGO "Operator: Petrobras Site: Location: P-52 Unit:" | NOVO "Operator Petrobras ... Location P-74"
+  const PARA = String.raw`(?=\s+(?:Site|Location|Unit|Equipment|Engineering|Routing|Project|Client|Date|Document|Prepared|Revision|Line|Tag|Asset|Operator)\b|\s*$)`;
+  const op  = texto.match(new RegExp(String.raw`\bOperator\s*:?\s+(?!Site\b|Location\b)(.{2,40}?)` + PARA, 'i'));
+  const loc = texto.match(new RegExp(String.raw`\bLocation\s*:?\s+(?!Unit\b|Equipment\b)(.{1,30}?)` + PARA, 'i'));
+  if (op && loc) r.cliente = op[1].trim() + ' ' + loc[1].trim();
+
   return r;
 }
 
@@ -102,6 +108,7 @@ function _pressaoDigitadaKpa(txt) {
 
 // Campos do certificado que são lidos/comparados com o memorial
 const MEM_CAMPOS = [
+  { id: 'cgCliente',  tipo: 'cliente', get: d => d.cliente,  nome: 'cliente / plataforma' },
   { id: 'cgPProj',    tipo: 'pressao', get: d => d.pProjKpa, nome: 'pressão de projeto' },
   { id: 'cgPOper',    tipo: 'pressao', get: d => d.pOperKpa, nome: 'pressão de operação' },
   { id: 'cgTProj',    tipo: 'temp',    get: d => d.tProj,    nome: 'temperatura de projeto' },
@@ -142,6 +149,7 @@ function _hintDoCampo(id) {
 // "101 kPa", "70 °C", "20 anos", "1 ano (corrosão interna)" — para a nota embaixo dos campos
 function _valorLegivel(c, d) {
   const v = c.get(d);
+  if (c.tipo === 'cliente') return v;
   if (c.tipo === 'pressao') return _fmtNum(v) + ' kPa';
   if (c.tipo === 'temp') return _fmtNum(v) + ' °C';
   return anosTxt(v) + (c.id === 'cgGarantia' ? ' (corrosão ' + (d.local === 'internal' ? 'interna' : 'externa') + ')' : '');
@@ -203,6 +211,9 @@ function atualizarComparacaoMemorial() {
         texto = 'cálculo: ' + _fmtNum(v) + ' °C';
         const t = parseFloat(digitado.replace(',', '.'));
         if (!isNaN(t)) status = Math.abs(t - v) <= 0.5 ? 'ok' : 'diverge';
+      } else if (c.tipo === 'cliente') {
+        texto = 'cálculo: ' + v + ' (Operator / Location)';
+        if (digitado) status = _normTexto(digitado).replace(/-/g, '') === _normTexto(v).replace(/-/g, '') ? 'ok' : 'diverge';
       } else { // anos
         texto = 'cálculo: ' + anosTxt(v) + (c.id === 'cgGarantia' ? ' (corrosão ' + (d.local === 'internal' ? 'interna' : 'externa') + ')' : ' (Design Lifetime)');
         const t = parseFloat(digitado.replace(',', '.'));

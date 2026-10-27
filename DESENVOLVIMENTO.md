@@ -408,6 +408,7 @@ Tudo está em [Controller/memorial.js](Controller/memorial.js). Ao anexar o memo
 |---|---|---|---|
 | Vida útil | `cgVida` | `Design Lifetime: 20` | `Repair design lifetime … 20 years` |
 | Local da corrosão → garantia | `cgGarantia` | `Defect Location: External/Internal` | `Cause of defect Internal/External corrosion` |
+| Cliente + plataforma | `cgCliente` | `Operator: Petrobras Site: Location: P-52` | `Operator Petrobras … Location P-74` |
 | Pressão de projeto | `cgPProj` | `Internal Design Pressure: P 1,0 barg` (×100 → kPa) | `Maximum repair design pressure … 0.10 Nmm-2 101.0 kPa` |
 | Pressão de operação | `cgPOper` | `Operating Pressure: 1,0` (barg) | `System internal operating pressure … 0.10 Nmm-2` |
 | Temperatura de projeto | `cgTProj` | `Design Temperature: T d 70 °C` | `Maximum repair design temperature … 70 °C` |
@@ -416,6 +417,8 @@ Tudo está em [Controller/memorial.js](Controller/memorial.js). Ao anexar o memo
 | Furo na linha (defeito passante) | checkbox `cgFuro` (marcada = SIM) | `Perforation/Leak` no bloco de defeito | `Defect type Perforation/leak` (outro tipo, p.ex. `Wall loss` → sem furo) |
 
 **Furo na linha:** o certificado imprime `FURO NA LINHA (DEFEITO PASSANTE):  ( X ) SIM  (   ) NÃO` logo abaixo da linha do PFP, conforme a checkbox "Há furo na linha" (etapa 11; sem marcar = NÃO). Ao anexar o memorial, a checkbox é marcada/desmarcada sozinha e aparece a comparação `✓/⚠ cálculo: defeito passante (furo) — Perforation/leak` com o link "usar". Depois que o usuário clica na checkbox (`data-manual` em `#furoBloco`), um memorial novo não a sobrescreve. A escolha vai no rascunho/dados do book (`furo`).
+
+**Cliente:** vira "Operator + Location" (ex.: `Petrobras P-74`); só é lido se os dois rótulos existirem, e preenche o campo quando vazio ou ainda "automático". Como o campo dispara o gatilho da plataforma, o contrato/Job # também é preenchido.
 
 **Regra da garantia:** corrosão **interna → 1 ano**, **externa → 5 anos** (o campo `cgGarantia` alimenta o texto "…garantia contratual dentro do período de N anos…" do certificado; `anosTxt()` em `main.js` cuida de "1 ano"/"5 anos").
 
