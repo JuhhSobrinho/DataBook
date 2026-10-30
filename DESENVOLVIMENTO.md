@@ -414,9 +414,9 @@ Tudo está em [Controller/memorial.js](Controller/memorial.js). Ao anexar o memo
 | Temperatura de projeto | `cgTProj` | `Design Temperature: T d 70 °C` | `Maximum repair design temperature … 70 °C` |
 | Temperatura de operação | `cgTOper` | *(não lida: sem rótulo inequívoco)* | `System operating temperature … 40 °C` |
 | TAG / Lot No. | `cgTag` / `cgSerial` | só comparação: o texto do memorial contém a TAG / o nº do documento? | idem |
-| Furo na linha (defeito passante) | checkbox `cgFuro` (marcada = SIM) | `Perforation/Leak` no bloco de defeito | `Defect type Perforation/leak` (outro tipo, p.ex. `Wall loss` → sem furo) |
+| Furo na linha (defeito passante) | *(sem campo — só aviso)* | `Perforation/Leak` no bloco de defeito | `Defect type Perforation/leak` (outro tipo, p.ex. `Wall loss` → sem furo) |
 
-**Furo na linha:** o certificado imprime `FURO NA LINHA (DEFEITO PASSANTE):  ( X ) SIM  (   ) NÃO` logo abaixo da linha do PFP, conforme a checkbox "Há furo na linha" (etapa 11; sem marcar = NÃO). Ao anexar o memorial, a checkbox é marcada/desmarcada sozinha e aparece a comparação `✓/⚠ cálculo: defeito passante (furo) — Perforation/leak` com o link "usar". Depois que o usuário clica na checkbox (`data-manual` em `#furoBloco`), um memorial novo não a sobrescreve. A escolha vai no rascunho/dados do book (`furo`).
+**Furo na linha:** não existe campo nem linha no certificado. Ao anexar o memorial, aparece apenas o aviso `⚠ há furo no cálculo (Perforation/leak)` (ou `cálculo: sem furo (…)`) na seção do certificado (`#furoBloco`, função `_avisoFuro()` em `memorial.js`) e na nota "Lido do memorial". É só informação para o usuário; nada é gravado no PDF nem no rascunho.
 
 **Cliente:** vira "Operator + Location" (ex.: `Petrobras P-74`); só é lido se os dois rótulos existirem, e preenche o campo quando vazio ou ainda "automático". Como o campo dispara o gatilho da plataforma, o contrato/Job # também é preenchido.
 

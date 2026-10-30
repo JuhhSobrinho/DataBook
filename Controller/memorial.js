@@ -117,7 +117,7 @@ const MEM_CAMPOS = [
   { id: 'cgGarantia', tipo: 'anos',    get: d => d.garantia, nome: 'garantia' },
   { id: 'cgTag',      tipo: 'tag',     nome: 'TAG' },
   { id: 'cgSerial',   tipo: 'lot',     nome: 'Lot No.' },
-  { id: 'furoBloco',  tipo: 'furo',    nome: 'furo na linha' },   // checkbox cgFuro (marcada = SIM)
+  { id: 'furoBloco',  tipo: 'furo',    nome: 'furo na linha' },   // só aviso embaixo da seção, sem campo
 ];
 
 const _normTexto = s => String(s || '').toUpperCase().replace(/[″”“’'`´]/g, '"').replace(/\s+/g, '');
@@ -155,28 +155,11 @@ function _valorLegivel(c, d) {
   return anosTxt(v) + (c.id === 'cgGarantia' ? ' (corrosão ' + (d.local === 'internal' ? 'interna' : 'externa') + ')' : '');
 }
 
-// Furo na linha: checkbox (marcada = SIM) x tipo de defeito do memorial (Perforation/leak = passante)
-function _comparaFuro(h, d) {
-  if (!d.furo) { h.classList.add('neutro'); h.textContent = 'cálculo: não encontrado no memorial'; return; }
-  const marcado = !!(document.getElementById('cgFuro') || {}).checked;
-  const status = (marcado ? 'SIM' : 'NAO') === d.furo ? 'ok' : 'diverge';
-  const txt = 'cálculo: ' + (d.furo === 'SIM' ? 'defeito passante (furo)' : 'sem furo') + ' — ' + d.tipoDefeito;
-  h.classList.add(status);
-  h.appendChild(document.createTextNode((status === 'ok' ? '✓ ' : '⚠ ') + txt + (status === 'diverge' ? ' — diferente do campo' : '')));
-  if (status === 'diverge') {
-    const a = document.createElement('a');
-    a.href = '#'; a.className = 'calc-usar'; a.textContent = 'usar';
-    a.onclick = e => { e.preventDefault(); _preencherFuro(d.furo); };
-    h.append(' · ', a);
-  }
-}
-
-// marca/desmarca a checkbox conforme o memorial. data-manual = o usuario ja mexeu: um memorial novo nao sobrescreve
-function _preencherFuro(valor) {
-  const cb = document.getElementById('cgFuro');
-  if (!cb) return;
-  cb.checked = valor === 'SIM';
-  cb.dispatchEvent(new Event('change', { bubbles: true }));
+// Furo na linha (defeito passante): só um AVISO (não há campo no certificado). Perforation/leak no memorial = há furo
+function _avisoFuro(h, d) {
+  if (!d.furo) { h.style.display = 'none'; return; }
+  if (d.furo === 'SIM') { h.classList.add('diverge'); h.textContent = '⚠ há furo no cálculo (' + d.tipoDefeito + ')'; }
+  else { h.classList.add('neutro'); h.textContent = 'cálculo: sem furo (' + d.tipoDefeito + ')'; }
 }
 
 // Reescreve o texto de comparação embaixo de cada campo, de acordo com o memorial atual e o que está digitado
@@ -191,7 +174,7 @@ function atualizarComparacaoMemorial() {
     h.textContent = '';
     if (!d || d.semTexto) { h.style.display = 'none'; continue; }
     h.style.display = 'block';
-    if (c.tipo === 'furo') { _comparaFuro(h, d); continue; }
+    if (c.tipo === 'furo') { _avisoFuro(h, d); continue; }
 
     let texto = '', status = null, usar = null;
     if (c.tipo === 'tag' || c.tipo === 'lot') {
@@ -258,11 +241,7 @@ async function lerMemorialParaCertificado(fonte, { preencher = true } = {}) {
       const sempre = c.tipo === 'anos'; // vida útil e garantia vêm com valor padrão: o memorial prevalece ao anexar
       if (sempre || !el.value.trim() || el.classList.contains('campo-sincronizado')) _preencherCampo(c.id, valor);
     }
-    if (d.furo) {
-      lidos.push('furo na linha ' + (d.furo === 'SIM' ? 'SIM' : 'NÃO') + ' (' + d.tipoDefeito + ')');
-      const cont = document.getElementById('furoBloco');
-      if (preencher && !(cont && cont.dataset.manual)) _preencherFuro(d.furo);
-    } else faltou.push('furo na linha');
+    if (d.furo) lidos.push(d.furo === 'SIM' ? 'HÁ FURO no cálculo (' + d.tipoDefeito + ')' : 'sem furo (' + d.tipoDefeito + ')');
     if (!lidos.length) mostrar('Não encontrei os dados do cálculo no memorial (modelo não reconhecido): preencha manualmente.', true);
     else mostrar((preencher ? 'Lido do memorial' : 'Memorial') + (d.modelo ? ' (modelo ' + d.modelo + ')' : '') + ': ' + lidos.join(' · ') + '. Os campos continuam editáveis; embaixo de cada um aparece o valor do cálculo.'
       + (faltou.length ? ' Não encontrei: ' + faltou.join(', ') + '.' : ''));
@@ -282,9 +261,6 @@ function reanalisarMemorial() {
 (function () {
   const memFile = document.getElementById('memFile');
   if (memFile) memFile.addEventListener('change', () => { const f = memFile.files[0]; if (f) lerMemorialParaCertificado(f); });
-  // escolha manual do furo (evento confiavel do usuario): memorial novo nao sobrescreve
-  const furoBloco = document.getElementById('furoBloco');
-  if (furoBloco) furoBloco.addEventListener('change', e => { if (e.isTrusted) furoBloco.dataset.manual = '1'; });
   // recompara enquanto o usuário edita os campos (TAG do certificado é espelhada da contracapa: espera a sincronização)
   const atualizar = () => setTimeout(atualizarComparacaoMemorial, 0);
   [...MEM_CAMPOS.map(c => c.id), 'tagEquip'].forEach(id => {
