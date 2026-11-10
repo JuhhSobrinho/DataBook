@@ -408,7 +408,7 @@ Tudo está em [Controller/memorial.js](Controller/memorial.js). Ao anexar o memo
 |---|---|---|---|
 | Vida útil | `cgVida` | `Design Lifetime: 20` | `Repair design lifetime … 20 years` |
 | Local da corrosão → garantia | `cgGarantia` | `Defect Location: External/Internal` | `Cause of defect Internal/External corrosion` |
-| Cliente + plataforma | `cgCliente` | `Operator: Petrobras Site: Location: P-52` | `Operator Petrobras … Location P-74` |
+| Cliente + plataforma | `cgCliente` | `Operator: Petrobras Site: Location: P-52` | `Operator Petrobras … Location P-74` **ou**, na capa do memorial, `Prepared for: Location: Subject: Component ID: TEAM reference:` com os valores depois do histórico de revisões (`Petrobras P-75 8104-26-0092 …`; o Nº do contrato `0000-00-0000` é a âncora e o que vem antes dele é o cliente + plataforma) |
 | Pressão de projeto | `cgPProj` | `Internal Design Pressure: P 1,0 barg` (×100 → kPa) | `Maximum repair design pressure … 0.10 Nmm-2 101.0 kPa` |
 | Pressão de operação | `cgPOper` | `Operating Pressure: 1,0` (barg) | `System internal operating pressure … 0.10 Nmm-2` |
 | Temperatura de projeto | `cgTProj` | `Design Temperature: T d 70 °C` | `Maximum repair design temperature … 70 °C` |
@@ -419,6 +419,8 @@ Tudo está em [Controller/memorial.js](Controller/memorial.js). Ao anexar o memo
 **Furo na linha:** não existe campo nem linha no certificado. Ao anexar o memorial, aparece apenas o aviso `⚠ há furo no cálculo (Perforation/leak)` (ou `cálculo: sem furo (…)`) na seção do certificado (`#furoBloco`, função `_avisoFuro()` em `memorial.js`) e na nota "Lido do memorial". É só informação para o usuário; nada é gravado no PDF nem no rascunho.
 
 **Cliente:** vira "Operator + Location" (ex.: `Petrobras P-74`); só é lido se os dois rótulos existirem, e preenche o campo quando vazio ou ainda "automático". Como o campo dispara o gatilho da plataforma, o contrato/Job # também é preenchido.
+
+**Sistema de reparo (fibra + resina):** `interpretarMemorial()` lê `FCR-BC ST(b)` / `FCR-BC HT` (também `FCR-QC …`) de "Repair system selected …", "Selected Repair System …" ou do modelo antigo "Material System: FCR-BC-ST(b) …" e mostra só um aviso `ℹ no cálculo: FCR-BC ST(b)` no topo da etapa 8 (`#fichaAviso`, em `atualizarComparacaoMemorial()`). Não marca nem desmarca fichas. Só BC/QC contam como fibra, para não confundir com a massa de nivelamento "FCR-EP HT".
 
 **Regra da garantia:** corrosão **interna → 1 ano**, **externa → 5 anos** (o campo `cgGarantia` alimenta o texto "…garantia contratual dentro do período de N anos…" do certificado; `anosTxt()` em `main.js` cuida de "1 ano"/"5 anos").
 

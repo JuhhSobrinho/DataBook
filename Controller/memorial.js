@@ -30,7 +30,7 @@ async function extrairDadosMemorial(buffer) {
 // Recebe o texto do memorial (já normalizado) e devolve os dados. Campos não encontrados ficam null.
 //   pProjKpa / pOperKpa: pressões em kPa | tProj / tOper: °C | vida: anos | local: 'internal'|'external'
 function interpretarMemorial(texto) {
-  const r = { semTexto: false, modelo: null, texto, vida: null, local: null, garantia: null, pProjKpa: null, pOperKpa: null, tProj: null, tOper: null, furo: null, tipoDefeito: null, cliente: null };
+  const r = { semTexto: false, modelo: null, texto, vida: null, local: null, garantia: null, pProjKpa: null, pOperKpa: null, tProj: null, tOper: null, furo: null, tipoDefeito: null, cliente: null, sistema: null };
   const achar = (...res) => { for (const re of res) { const m = texto.match(re); if (m) return m; } return null; };
   const NUM = '(\\d+(?:[.,]\\d+)?)', NEG = '(-?\\d+(?:[.,]\\d+)?)';
   let m;
@@ -88,6 +88,22 @@ function interpretarMemorial(texto) {
   const op  = texto.match(new RegExp(String.raw`\bOperator\s*:?\s+(?!Site\b|Location\b)(.{2,40}?)` + PARA, 'i'));
   const loc = texto.match(new RegExp(String.raw`\bLocation\s*:?\s+(?!Unit\b|Equipment\b)(.{1,30}?)` + PARA, 'i'));
   if (op && loc) r.cliente = op[1].trim() + ' ' + loc[1].trim();
+  else {
+    // NOVO (capa): rótulos "Prepared for: Location: Subject: Component ID: TEAM reference:" e, depois do histórico de revisões
+    // (que termina numa data), os valores na mesma ordem: "Petrobras P-75 8104-26-0092 3"-SW-... 2600920..."
+    // O assunto (Nº do contrato, 0000-00-0000) serve de âncora: o que vem antes dele é "cliente + plataforma".
+    const capa = texto.match(/Prepared\s+for:\s*Location:\s*Subject:\s*Component\s+ID:\s*TEAM\s+reference:.{0,400}?\d{1,2}\/\d{1,2}\/\d{2,4}\s+((?:(?!\d{1,2}\/\d{1,2}\/\d{2,4}).){2,40}?)\s+\d{4}-\d{2}-\d{4}\b/i);
+    if (capa) r.cliente = capa[1].trim();
+  }
+
+  // sistema de reparo (fibra + resina), p.ex. "FCR-BC ST(b)": NOVO "Repair system selected FCR-BC ST(b)" / "Selected Repair System FCR-BC ST(b)"
+  // | ANTIGO "Material System: FCR-BC-ST(b) (Biaxial Carbon with ST(b) resin)". Só BC/QC como fibra: "FCR-EP HT" (massa de nivelamento) não conta.
+  if ((m = texto.match(/\bFCR[-\s]?(BC|QC)[-\s]+(ST\s*\(\s*b\s*\)|HT|UT)(?![\w(])/i))) {
+    r.sistema = 'FCR-' + m[1].toUpperCase() + ' ' + (/^st/i.test(m[2]) ? 'ST(b)' : m[2].toUpperCase());
+  } else {
+    const fib = texto.match(/(?:Carbon|Glass)\s+fabric:\s*(BC|QC)\b/i), res = texto.match(/Resin\s+system:\s*(ST\s*\(\s*b\s*\)|HT|UT)/i);
+    if (fib && res) r.sistema = 'FCR-' + fib[1].toUpperCase() + ' ' + (/^st/i.test(res[1]) ? 'ST(b)' : res[1].toUpperCase());
+  }
 
   return r;
 }
@@ -165,6 +181,12 @@ function _avisoFuro(h, d) {
 // Reescreve o texto de comparação embaixo de cada campo, de acordo com o memorial atual e o que está digitado
 function atualizarComparacaoMemorial() {
   const d = STATE.memorial;
+  // Fichas técnicas (etapa 8): só um aviso com o sistema de reparo lido do cálculo (fibra + resina)
+  const fa = document.getElementById('fichaAviso');
+  if (fa) {
+    fa.style.display = d && d.sistema ? 'block' : 'none';
+    fa.textContent = d && d.sistema ? 'ℹ no cálculo: ' + d.sistema + ' — confira as fichas técnicas marcadas' : '';
+  }
   for (const c of MEM_CAMPOS) {
     const h = _hintDoCampo(c.id);
     if (!h) continue;
@@ -241,6 +263,7 @@ async function lerMemorialParaCertificado(fonte, { preencher = true } = {}) {
       const sempre = c.tipo === 'anos'; // vida útil e garantia vêm com valor padrão: o memorial prevalece ao anexar
       if (sempre || !el.value.trim() || el.classList.contains('campo-sincronizado')) _preencherCampo(c.id, valor);
     }
+    if (d.sistema) lidos.push('sistema de reparo ' + d.sistema);
     if (d.furo) lidos.push(d.furo === 'SIM' ? 'HÁ FURO no cálculo (' + d.tipoDefeito + ')' : 'sem furo (' + d.tipoDefeito + ')');
     if (!lidos.length) mostrar('Não encontrei os dados do cálculo no memorial (modelo não reconhecido): preencha manualmente.', true);
     else mostrar((preencher ? 'Lido do memorial' : 'Memorial') + (d.modelo ? ' (modelo ' + d.modelo + ')' : '') + ': ' + lidos.join(' · ') + '. Os campos continuam editáveis; embaixo de cada um aparece o valor do cálculo.'
