@@ -56,8 +56,7 @@ function listarPendencias(){
   add(E, 'Temperatura de operação',    _vazio('cgTOper'));
   add(E, 'Foto antes da execução',     !STATE.fotoAntes);
   add(E, 'Foto depois da execução',    !STATE.fotoDepois);
-  add(E, 'Nome do responsável',        _vazio('cgGerente'));
-  add(E, 'Assinatura',                 !STATE.assinatura);
+  // Nome do responsável e assinatura: preenchidos depois de gerar o book, não entram na checagem
   // PFP so e' exigido quando ha PPCI (Jotachar selecionado)
   if(document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]:checked')){
     add(E, 'Espessura do PFP',         _vazio('cgPfpEsp'));
