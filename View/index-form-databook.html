@@ -318,6 +318,11 @@
         <span class="badge badge-gray">Embutido</span>
       </label>
       <label class="choice">
+        <input type="checkbox" name="ficha" value="Jotun-Guia-Aplicacao-JF750XT">
+        <div class="label-info"><div class="label-main">Guia de Aplicação Jotun Jotachar JF750 XT (Jun/2024)</div><div class="label-sub">PPCI - marcado automaticamente junto com o Certificado Jotachar</div></div>
+        <span class="badge badge-gray">Embutido</span>
+      </label>
+      <label class="choice">
         <input type="checkbox" name="ficha" value="Vectorply-CLT2500-5KT700">
         <div class="label-info"><div class="label-main">Certificação Vectorply C-LT 2500-5K-T700</div><div class="label-sub">Fibra de carbono BC - Product Certification + Packing List</div></div>
         <span class="badge badge-gray">Embutido</span>
@@ -743,6 +748,11 @@
     cb.addEventListener('change', atualizarDescricao);
     cb.addEventListener('change', atualizarPfpIndicador);
   });
+
+  // O Guia de Aplicação do Jotachar acompanha o Certificado Jotachar (marca/desmarca junto; dá para ajustar à mão depois)
+  const jotachar = document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]');
+  const guiaJotachar = document.querySelector('input[name="ficha"][value="Jotun-Guia-Aplicacao-JF750XT"]');
+  if (jotachar && guiaJotachar) jotachar.addEventListener('change', () => { guiaJotachar.checked = jotachar.checked; guiaJotachar.dispatchEvent(new Event('change', { bubbles: true })); });
 
   function atualizarPfpIndicador(){
     const el = document.getElementById('pfpAutoIndicador');
