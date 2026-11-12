@@ -49,6 +49,7 @@ function coletarRascunho(opts = {}){
     },
     revisoes: coletarRevisoes(),
     proc:   document.querySelector('input[name=proc]:checked')?.value||null,
+    procExtras: [...document.querySelectorAll('input[name=procExtra]:checked')].map(el=>el.value),
     fichas: [...document.querySelectorAll('input[name=ficha]:checked')].map(el=>el.value),
     pdas:   [...document.querySelectorAll('input[name=pda]:checked')].map(el=>el.value),
     tecnicos,
@@ -144,6 +145,9 @@ async function restaurarRascunho(estado, opts = {}){
     const r=document.querySelector('input[name=proc][value="'+estado.proc+'"]');
     if(r) r.checked=true;
   }
+
+  // Procedimentos complementares (ex.: guia de aplicacao do PPCI)
+  document.querySelectorAll('input[name=procExtra]').forEach(el=>{ el.checked=(estado.procExtras||[]).includes(el.value); });
 
   // Fichas e PDAs
   document.querySelectorAll('input[name=ficha]').forEach(el=>{ el.checked=(estado.fichas||[]).includes(el.value); });

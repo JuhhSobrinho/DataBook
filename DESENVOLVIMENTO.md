@@ -139,6 +139,7 @@ Todos os valores de PDF são **base64 puro**, sem prefixo `data:application/pdf;
    ```
 2. Adicione o `<label class="choice">` correspondente em `View/index-form-databook.html`, dentro da lista certa (`#fichasList`, `#pdaList`, `#procList`), com `value` igual à chave usada no passo 1.
 3. Pronto — `montarDatabook()` já lê qualquer checkbox/radio marcado daquele grupo automaticamente via `document.querySelectorAll('input[name=ficha]:checked')` (ou `pda`/`proc`). Não precisa mexer em `main.js`.
+   - **Procedimento complementar (checkbox `name="procExtra"`, etapa 7):** além do procedimento principal (radio `proc`, escolha única) há itens que vão junto, logo depois dele — hoje só o *Guia de Aplicação Jotun Jotachar JF750 XT* (`Jotun-Guia-Aplicacao-JF750XT` em `assets-procedimentos.json`). Marcar o guia marca o Certificado Jotachar na etapa 8 (e desmarcar desmarca), o que liga o PFP "SIM" no certificado. Entra em `montarDatabook()` ([main.js](Controller/main.js)), no rascunho (`procExtras`) e na estimativa de páginas.
 4. Se o arquivo `Model/assets-*.json` correspondente estiver na lista `MODEL_ASSETS` do Service Worker ([sw.js:17](sw.js#L17)), ele já vai ser recacheado automaticamente — mas só depois que o SW atualizar (ver [seção 10](#10-pwa--service-worker-swjs)).
 
 ### Receita: adicionar um novo técnico / certificado de técnico

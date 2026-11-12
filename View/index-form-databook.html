@@ -284,6 +284,12 @@
         </div>
         <span class="badge badge-gray">Embutido</span>
       </label>
+      <p class="hint" style="margin:10px 0 4px">Complementar (vai no book logo depois do procedimento acima):</p>
+      <label class="choice">
+        <input type="checkbox" name="procExtra" value="Jotun-Guia-Aplicacao-JF750XT">
+        <div class="label-info"><div class="label-main">Guia de Aplicação Jotun Jotachar JF750 XT (Jun/2024)</div><div class="label-sub">Aplicação do PPCI - ao marcar, já seleciona o Certificado Jotachar na Ficha Técnica (etapa 8)</div></div>
+        <span class="badge badge-gray">Embutido</span>
+      </label>
     </div>
   </section>
 
@@ -315,11 +321,6 @@
       <label class="choice">
         <input type="checkbox" name="ficha" value="Jotun-Jotachar">
         <div class="label-info"><div class="label-main">Certificado Jotun Jotachar (Venc. 01/10/2026)</div><div class="label-sub">PPCI - Jotachar JF750</div></div>
-        <span class="badge badge-gray">Embutido</span>
-      </label>
-      <label class="choice">
-        <input type="checkbox" name="ficha" value="Jotun-Guia-Aplicacao-JF750XT">
-        <div class="label-info"><div class="label-main">Guia de Aplicação Jotun Jotachar JF750 XT (Jun/2024)</div><div class="label-sub">PPCI - marcado automaticamente junto com o Certificado Jotachar</div></div>
         <span class="badge badge-gray">Embutido</span>
       </label>
       <label class="choice">
@@ -749,10 +750,10 @@
     cb.addEventListener('change', atualizarPfpIndicador);
   });
 
-  // O Guia de Aplicação do Jotachar acompanha o Certificado Jotachar (marca/desmarca junto; dá para ajustar à mão depois)
+  // Guia de Aplicação do Jotachar (etapa 7): marcar/desmarcar o guia marca/desmarca o Certificado Jotachar na ficha técnica (PPCI)
+  const guiaJotachar = document.querySelector('input[name="procExtra"][value="Jotun-Guia-Aplicacao-JF750XT"]');
   const jotachar = document.querySelector('input[name="ficha"][value="Jotun-Jotachar"]');
-  const guiaJotachar = document.querySelector('input[name="ficha"][value="Jotun-Guia-Aplicacao-JF750XT"]');
-  if (jotachar && guiaJotachar) jotachar.addEventListener('change', () => { guiaJotachar.checked = jotachar.checked; guiaJotachar.dispatchEvent(new Event('change', { bubbles: true })); });
+  if (jotachar && guiaJotachar) guiaJotachar.addEventListener('change', () => { jotachar.checked = guiaJotachar.checked; jotachar.dispatchEvent(new Event('change', { bubbles: true })); });
 
   function atualizarPfpIndicador(){
     const el = document.getElementById('pfpAutoIndicador');

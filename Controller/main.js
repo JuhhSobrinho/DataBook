@@ -327,6 +327,7 @@ function updateStatus() {
   for (let i = 1; i <= 10; i++) pages += 1;
   for (const k of ['ss', 'rdo', 'rel', 'rdi', 'mem', 'arpt']) if (STATE.uploads[k]) pages += 2;
   if (proc) pages += 21;
+  pages += document.querySelectorAll('input[name=procExtra]:checked').length * 21;
   pages += fichas.length * 4;
   pages += pdas.length * 3;
   if (cgOk) pages += 2;
@@ -334,7 +335,7 @@ function updateStatus() {
   $('totalPages').innerHTML = '- estimativa: <strong>' + Math.round(pages) + '</strong> paginas';
 }
 ['capaElab', 'tagEquip', 'cgCliente', 'cgTag'].forEach(id => $(id).addEventListener('input', updateStatus));
-document.querySelectorAll('input[name=proc],input[name=ficha],input[name=pda]').forEach(el => el.addEventListener('change', updateStatus));
+document.querySelectorAll('input[name=proc],input[name=procExtra],input[name=ficha],input[name=pda]').forEach(el => el.addEventListener('change', updateStatus));
 document.querySelectorAll('.nav-link').forEach(a => {
   a.addEventListener('click', e => {
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -1088,6 +1089,7 @@ async function montarDatabook() {
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '5', 'PROCEDIMENTOS');
   const proc = document.querySelector('input[name=proc]:checked');
   if (proc) await anexarPdf(pdf, b64ToBytes(procedimentos[proc.value]));
+  for (const c of document.querySelectorAll('input[name=procExtra]:checked')) await anexarPdf(pdf, b64ToBytes(procedimentos[c.value]));
 
   await desenhaSeparador(pdf, fontReg, fontBold, logoTeamPng, docNum, '6', 'FICHA TÉCNICA');
   for (const c of document.querySelectorAll('input[name=ficha]:checked')) {
